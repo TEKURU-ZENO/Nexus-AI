@@ -334,6 +334,10 @@ function useMissionEngine() {
           markEvent(event.agent, event.message);
         }
 
+        if (event.type === 'api_exhausted') {
+          setConnectionState('simulation');
+        }
+
         if (event.type === 'debate_delta') {
           setDebate((current) => [
             { agent: event.agent === 'critic' ? 'Critic' : 'Agent', text: event.message },

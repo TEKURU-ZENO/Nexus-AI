@@ -64,10 +64,20 @@ async def emit_agent(agent: dict, mission: str, mode: str, remembered: list[str]
             "Be specific, decisive, practical, and avoid AGI fantasy language."
         )
         output = ""
+        is_error = False
         async for delta in openai_service.stream_text(agent["prompt"], prompt):
+            if delta.startswith("\n[provider warning:"):
+                is_error = True
+                yield {
+                    "type": "api_exhausted",
+                    "agent": "system",
+                    "message": f"API key warning/exhausted: {delta.replace(chr(10), '').strip()}"
+                }
+                break
             output += delta
             yield {"type": "agent_delta", "agent": agent["id"], "message": delta}
-        if not output.strip():
+        
+        if is_error or not output.strip():
             output = fallback_output(agent, mission, mode, remembered)
             yield {"type": "agent_delta", "agent": agent["id"], "message": output}
     else:
@@ -78,6 +88,7 @@ async def emit_agent(agent: dict, mission: str, mode: str, remembered: list[str]
             await asyncio.sleep(0.32)
 
     yield {"type": "agent_done", "agent": agent["id"], "message": output}
+
 
 
 def section(label: str, text: str, risk: str, recommendation: str) -> dict:
@@ -118,11 +129,20 @@ async def stream_mission(mission: str, mode: str = "Strategic Planning") -> Asyn
     )
     yield {"type": "debate_start", "agent": "critic", "message": "Debate engine opening adversarial review."}
     critic_text = ""
+    is_critic_error = False
     if openai_service.enabled:
         async for delta in openai_service.stream_text(CRITIC["prompt"], critic_prompt):
+            if delta.startswith("\n[provider warning:"):
+                is_critic_error = True
+                yield {
+                    "type": "api_exhausted",
+                    "agent": "system",
+                    "message": f"API key warning/exhausted: {delta.replace(chr(10), '').strip()}"
+                }
+                break
             critic_text += delta
             yield {"type": "debate_delta", "agent": "critic", "message": delta}
-    if not critic_text.strip():
+    if is_critic_error or not critic_text.strip():
         critic_text = fallback_output(CRITIC, mission, mode, remembered)
         yield {"type": "debate_delta", "agent": "critic", "message": critic_text}
 
