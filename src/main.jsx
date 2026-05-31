@@ -202,6 +202,7 @@ function useMissionEngine() {
     }
   });
   const [connectionState, setConnectionState] = useState('checking');
+  const [fullTraces, setFullTraces] = useState({});
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -288,6 +289,14 @@ function useMissionEngine() {
     window.setTimeout(() => {
       const nextReport = buildReport(targetMission);
       setReport(nextReport);
+      const localTraces = {
+        orchestrator: "Decomposed mission into research, strategy, architecture, critique, and memory tracks.\nResolved debate into phased execution plan with confidence-weighted decisions.",
+        researcher: "Scanning competitor patterns, market timing, adoption constraints, and regulatory shadows.\nObservation: errors are expensive. Small clinics are fast adopters.",
+        architect: "Drafting product flows, system surfaces, data pathways, and operator controls.\nDesigned intake, agent routing, evidence ledger, and confidence labels.",
+        strategist: "Estimating wedge, buyer urgency, monetization, retention loops, and launch sequence.\nRecommends founder-led pilots and outcome-based pricing.",
+        critic: "Stress testing assumptions for weak evidence, brittle economics, and trust failures.\nCritique: users will punish vague AI claims. Force evidence checking."
+      };
+      setFullTraces(localTraces);
       setMemory((current) => [
         `Mission: ${targetMission} | Outcome: ${nextReport.sections[0].text}`,
         ...current
@@ -299,11 +308,11 @@ function useMissionEngine() {
     }, 650 + stageTemplates.length * 1050);
   };
 
-  const runRemoteMission = async (targetMission, targetMode) => {
+  const runRemoteMission = async (targetMission, targetMode, refinement = null) => {
     const response = await fetch('/api/mission/stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mission: targetMission, mode: targetMode })
+      body: JSON.stringify({ mission: targetMission, mode: targetMode, refinement })
     });
 
     if (!response.ok || !response.body) {
@@ -361,6 +370,7 @@ function useMissionEngine() {
 
         if (event.type === 'mission_complete') {
           setReport(event.report);
+          setFullTraces(event.full_traces || {});
           persistSession(event.report, debate, targetMission, targetMode);
           setRunning(false);
           setActiveAgent('memory');
@@ -382,13 +392,14 @@ function useMissionEngine() {
     setEvents([]);
     setDebate([]);
     setReport(null);
+    setFullTraces({});
     setGraphPulse((value) => value + 1);
 
     try {
       if (options.cinematic) {
         await new Promise((resolve) => window.setTimeout(resolve, 1400));
       }
-      await runRemoteMission(targetMission, targetMode);
+      await runRemoteMission(targetMission, targetMode, options.refinement);
     } catch {
       appendFeed('system', 'API stream unavailable. Local cognitive simulation engaged.');
       runLocalMission(targetMission, targetMode);
@@ -428,7 +439,8 @@ function useMissionEngine() {
     report,
     activeAgent,
     graphPulse,
-    connectionState
+    connectionState,
+    fullTraces
   };
 }
 
@@ -565,7 +577,7 @@ function AgentCard({ agent, active, running }) {
   );
 }
 
-function MissionConsole({ mission, setMission, mode, setMode, sessions, loadSession, runMission, startDemo, running }) {
+function MissionConsole({ mission, setMission, mode, setMode, sessions, loadSession, runMission, startDemo, running, onCompare }) {
   return (
     <section className="mission-console panel">
       <div className="panel-title">
@@ -586,13 +598,12 @@ function MissionConsole({ mission, setMission, mode, setMode, sessions, loadSess
         ))}
       </div>
       <div className="command-row">
-        <button className="primary" onClick={runMission} disabled={running}>
+        <button className="primary" onClick={() => runMission()} disabled={running}>
           {running ? <Pause size={18} /> : <Play size={18} />}
           {running ? 'Mission Running' : 'Initiate Mission'}
         </button>
         <button className="secondary" onClick={startDemo} disabled={running}><Sparkles size={17} /> Demo Run</button>
-        <button className="secondary"><Zap size={17} /> Boost Confidence</button>
-        <button className="secondary"><GitBranch size={17} /> Fork Plan</button>
+        <button className="secondary" onClick={onCompare}><GitBranch size={17} /> Compare Plans</button>
       </div>
       <div className="session-strip">
         <span>Mission history</span>
@@ -651,28 +662,22 @@ function KnowledgeGraph({ mission, graphPulse, activeAgent }) {
 
 function LiveTerminal({ feed }) {
   return (
-    <section className="terminal-panel panel">
-      <div className="panel-title">
-        <div><Terminal size={18} /> Live Agent Feed</div>
-        <span>streaming cognition</span>
-      </div>
-      <div className="terminal-feed">
-        <AnimatePresence initial={false}>
-          {feed.map((line) => (
-            <motion.div
-              className="terminal-line"
-              key={line.id}
-              initial={{ opacity: 0, x: -12, height: 0 }}
-              animate={{ opacity: 1, x: 0, height: 'auto' }}
-              exit={{ opacity: 0 }}
-            >
-              <span>{line.agent}</span>
-              <p>{line.text}</p>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-    </section>
+    <div className="terminal-feed">
+      <AnimatePresence initial={false}>
+        {feed.map((line) => (
+          <motion.div
+            className="terminal-line"
+            key={line.id}
+            initial={{ opacity: 0, x: -12, height: 0 }}
+            animate={{ opacity: 1, x: 0, height: 'auto' }}
+            exit={{ opacity: 0 }}
+          >
+            <span>{line.agent}</span>
+            <p>{line.text}</p>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -680,11 +685,7 @@ function Timeline({ events, running }) {
   const fallback = ['mission intake', 'task routing', 'parallel analysis', 'debate', 'memory commit', 'synthesis'];
   const rows = events.length ? events : fallback.map((label, index) => ({ id: label, label, agent: agents[index % agents.length].id }));
   return (
-    <section className="timeline panel">
-      <div className="panel-title">
-        <div><Orbit size={18} /> Autonomous Planning Timeline</div>
-        <span>{running ? 'executing' : 'ready'}</span>
-      </div>
+    <div className="timeline-feed-wrapper" style={{ overflowY: 'auto', height: '100%' }}>
       {rows.slice(-7).map((event, index) => (
         <div className="timeline-row" key={event.id}>
           <i className={events.length && index === rows.slice(-7).length - 1 ? 'hot' : ''} />
@@ -694,7 +695,7 @@ function Timeline({ events, running }) {
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
@@ -705,39 +706,92 @@ function DebatePanel({ running, debate }) {
   ];
 
   return (
-    <section className="debate panel">
-      <div className="panel-title">
-        <div><ShieldAlert size={18} /> Agent Debate Mode</div>
-        <span>{running ? 'active' : 'armed'}</span>
-      </div>
+    <div className="debate-feed-wrapper" style={{ overflowY: 'auto', height: '100%' }}>
       {lines.slice(0, 3).map((line, index) => (
         <div className={line.agent === 'Critic' ? 'debate-line critic' : 'debate-line strategist'} key={`${line.agent}-${index}`}>
           <b>{line.agent}</b>
           <p>{line.text}</p>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 
 function MemoryPanel({ memory }) {
   return (
-    <section className="memory panel">
-      <div className="panel-title">
-        <div><DatabaseZap size={18} /> Persistent Memory</div>
-        <span>{memory.length} traces</span>
-      </div>
+    <div className="memory-feed-wrapper" style={{ overflowY: 'auto', height: '100%' }}>
       {memory.map((item, index) => (
         <div className="memory-item" key={`${item}-${index}`}>
           <Eye size={15} />
           <span>{item}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function RightPanel({ engine }) {
+  const [activeTab, setActiveTab] = useState('feed');
+  return (
+    <section className="right-panel panel">
+      <div className="panel-tabs">
+        <button className={activeTab === 'feed' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('feed')}>
+          <Terminal size={14} /> Feed
+        </button>
+        <button className={activeTab === 'debate' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('debate')}>
+          <ShieldAlert size={14} /> Debate
+        </button>
+        <button className={activeTab === 'memory' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('memory')}>
+          <DatabaseZap size={14} /> Memory
+        </button>
+        <button className={activeTab === 'timeline' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('timeline')}>
+          <Orbit size={14} /> Timeline
+        </button>
+      </div>
+      <div className="tab-content" style={{ flex: 1, minHeight: 0 }}>
+        {activeTab === 'feed' && <LiveTerminal feed={engine.feed} />}
+        {activeTab === 'debate' && <DebatePanel running={engine.running} debate={engine.debate} />}
+        {activeTab === 'memory' && <MemoryPanel memory={engine.memory} />}
+        {activeTab === 'timeline' && <Timeline events={engine.events} running={engine.running} />}
+      </div>
     </section>
   );
 }
 
-function MissionOutput({ report }) {
+function MissionOutput({ report, mission, mode, runMission, running }) {
+  const [refinementText, setRefinementText] = useState('');
+
+  const exportReport = () => {
+    if (!report) return;
+    let md = `# NEXUS Strategic Directive\n\n`;
+    md += `**Mission:** ${mission}\n`;
+    md += `**Mode:** ${mode}\n`;
+    md += `**Confidence Score:** ${report.confidence}%\n\n`;
+    md += `## Sections\n\n`;
+    report.sections.forEach(sec => {
+      md += `### ${sec.label} (Risk: ${sec.risk})\n`;
+      md += `${sec.text}\n\n`;
+      if (sec.recommendation) {
+        md += `*Recommendation:* ${sec.recommendation}\n\n`;
+      }
+    });
+    md += `\n---\n*Generated by NEXUS AI-native Strategic Workflow Platform*\n`;
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NEXUS-Directive-${mode.replace(/\s+/g, '-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRefineSubmit = () => {
+    if (!refinementText.trim()) return;
+    runMission(mission, mode, { refinement: refinementText });
+    setRefinementText('');
+  };
+
   return (
     <section className="output panel">
       <div className="panel-title">
@@ -746,7 +800,36 @@ function MissionOutput({ report }) {
       </div>
       {report ? (
         <>
-          <h2>{report.title}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h2 style={{ margin: 0 }}>{report.title}</h2>
+            <button className="secondary" onClick={exportReport} style={{ height: '34px', fontSize: '12px' }}>
+              <Zap size={14} /> Export Report (.md)
+            </button>
+          </div>
+
+          <div className="confidence-breakdown">
+            <div className="breakdown-bar">
+              <span>Desirability (Researcher)</span>
+              <div className="meter-bg"><div className="meter-fill" style={{ width: '88%', backgroundColor: '#b6ff6a' }} /></div>
+              <span>88%</span>
+            </div>
+            <div className="breakdown-bar">
+              <span>Feasibility (Architect)</span>
+              <div className="meter-bg"><div className="meter-fill" style={{ width: '86%', backgroundColor: '#7df9ff' }} /></div>
+              <span>86%</span>
+            </div>
+            <div className="breakdown-bar">
+              <span>Viability (Strategist)</span>
+              <div className="meter-bg"><div className="meter-fill" style={{ width: '87%', backgroundColor: '#ff7ad9' }} /></div>
+              <span>87%</span>
+            </div>
+            <div className="breakdown-bar">
+              <span>Resilience (Critic)</span>
+              <div className="meter-bg"><div className="meter-fill" style={{ width: '91%', backgroundColor: '#ff5b6e' }} /></div>
+              <span>91%</span>
+            </div>
+          </div>
+
           <div className="report-grid">
             {report.sections.map((section) => (
               <article key={section.label}>
@@ -758,6 +841,21 @@ function MissionOutput({ report }) {
                 {section.recommendation && <small>{section.recommendation}</small>}
               </article>
             ))}
+          </div>
+
+          <div className="refinement-area">
+            <label>Adversarial Feedback Loop (Refine Directive)</label>
+            <div className="refinement-input-row">
+              <textarea 
+                value={refinementText} 
+                onChange={(e) => setRefinementText(e.target.value)} 
+                placeholder="Enter criticism or instruction to refine this plan (e.g. 'focus more on regulatory constraints')"
+                disabled={running}
+              />
+              <button className="primary" onClick={handleRefineSubmit} disabled={running || !refinementText.trim()}>
+                Refine Plan
+              </button>
+            </div>
           </div>
         </>
       ) : (
@@ -771,8 +869,197 @@ function MissionOutput({ report }) {
   );
 }
 
+function AgentTraceModal({ agent, trace, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{agent.name} - Cognitive Trace</h2>
+          <button className="close-btn" onClick={onClose}>&times;</button>
+        </div>
+        <div className="modal-body">
+          <pre>{trace || "No cognitive trace recorded for this agent in the current session. Run a mission to collect traces."}</pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonModal({ sessions, onClose }) {
+  const [leftIndex, setLeftIndex] = useState(0);
+  const [rightIndex, setRightIndex] = useState(sessions.length > 1 ? 1 : 0);
+
+  if (!sessions || sessions.length === 0) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Compare Mission Plans</h2>
+            <button className="close-btn" onClick={onClose}>&times;</button>
+          </div>
+          <div className="modal-body">
+            <p>You need at least one saved mission in your history to compare plans.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const leftSession = sessions[leftIndex];
+  const rightSession = sessions[rightIndex];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content wide" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Compare Mission Plans</h2>
+          <button className="close-btn" onClick={onClose}>&times;</button>
+        </div>
+        <div className="modal-body">
+          <div className="comparison-selectors">
+            <div>
+              <label>Plan A:</label>
+              <select value={leftIndex} onChange={e => setLeftIndex(Number(e.target.value))}>
+                {sessions.map((s, idx) => (
+                  <option key={s.id} value={idx}>{s.mode}: {s.mission.slice(0, 40)}...</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Plan B:</label>
+              <select value={rightIndex} onChange={e => setRightIndex(Number(e.target.value))}>
+                {sessions.map((s, idx) => (
+                  <option key={s.id} value={idx}>{s.mode}: {s.mission.slice(0, 40)}...</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th>Vector</th>
+                <th>Plan A</th>
+                <th>Plan B</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Mission</strong></td>
+                <td>{leftSession.mission}</td>
+                <td>{rightSession.mission}</td>
+              </tr>
+              <tr>
+                <td><strong>Mode</strong></td>
+                <td>{leftSession.mode}</td>
+                <td>{rightSession.mode}</td>
+              </tr>
+              <tr>
+                <td><strong>Confidence</strong></td>
+                <td><span className="conf-value">{leftSession.report?.confidence || 90}%</span></td>
+                <td><span className="conf-value">{rightSession.report?.confidence || 90}%</span></td>
+              </tr>
+              {leftSession.report?.sections.map((sec, idx) => {
+                const rightSec = rightSession.report?.sections[idx] || {};
+                return (
+                  <tr key={sec.label}>
+                    <td><strong>{sec.label}</strong></td>
+                    <td>
+                      <div className="risk-tag">{sec.risk && <span className={`risk ${sec.risk.toLowerCase()}`}>Risk {sec.risk}</span>}</div>
+                      <p>{sec.text}</p>
+                      {sec.recommendation && <small>{sec.recommendation}</small>}
+                    </td>
+                    <td>
+                      <div className="risk-tag">{rightSec.risk && <span className={`risk ${rightSec.risk.toLowerCase()}`}>Risk {rightSec.risk}</span>}</div>
+                      <p>{rightSec.text}</p>
+                      {rightSec.recommendation && <small>{rightSec.recommendation}</small>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LandingPage({ onEnter, connectionState }) {
+  const statusConfig = {
+    live: { label: 'System Status: LIVE ORCHESTRATION', class: 'live' },
+    simulation: { label: 'System Status: LOCAL SIMULATION', class: 'sim' },
+    offline: { label: 'System Status: OFFLINE MODE', class: 'offline' },
+    checking: { label: 'System Status: Connecting...', class: '' }
+  };
+  const currentStatus = statusConfig[connectionState] || statusConfig.checking;
+
+  return (
+    <main className="landing-shell">
+      <Starfield />
+      <div className="grid-bg" />
+      <div className="landing-content">
+        <motion.div 
+          className="hero"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="landing-badge">
+            <Atom size={16} /> <span>V1.0.0 RELEASE</span>
+          </div>
+          <h1>NEXUS</h1>
+          <p className="subtitle">AI-Native Collaborative Strategy & System Orchestration Platform</p>
+          <p className="tagline">
+            Decompose complex missions, orchestrate sequential agent chains of thought, debate plan safety adversarially, and compile production-ready strategic directives.
+          </p>
+
+          <div className="status-indicator">
+            <span className={`status-dot ${currentStatus.class}`} /> {currentStatus.label}
+          </div>
+
+          <div className="landing-actions">
+            <button className="primary" onClick={onEnter}>
+              <Play size={18} /> Enter Command Console
+            </button>
+            <a href="https://github.com/TEKURU-ZENO/Nexus-AI" target="_blank" rel="noreferrer" className="secondary btn-link">
+              <GitBranch size={17} /> View Repository
+            </a>
+          </div>
+        </motion.div>
+
+        <div className="landing-features">
+          <div className="feature-card">
+            <BrainCircuit size={24} />
+            <h3>Chain-of-Thought Mesh</h3>
+            <p>Downstream agents build on the preceding plan, creating unified strategic outputs.</p>
+          </div>
+          <div className="feature-card">
+            <ShieldAlert size={24} />
+            <h3>Adversarial Stress Testing</h3>
+            <p>Adversarial agent debates identify scalability issues, regulatory risks, and technical bottlenecks.</p>
+          </div>
+          <div className="feature-card">
+            <DatabaseZap size={24} />
+            <h3>Durable Memory Fabric</h3>
+            <p>Persistent semantic memory automatically recalls and correlates past directives.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function App() {
   const engine = useMissionEngine();
+  const [view, setView] = useState('landing');
+  const [traceAgent, setTraceAgent] = useState(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  if (view === 'landing') {
+    return <LandingPage onEnter={() => setView('console')} connectionState={engine.connectionState} />;
+  }
+
   return (
     <main className="app-shell">
       <Starfield />
@@ -781,29 +1068,48 @@ function App() {
       <Sidebar />
       <section className="workspace">
         <div className="left-column">
-          <MissionConsole {...engine} />
+          <MissionConsole {...engine} onCompare={() => setCompareOpen(true)} />
           <div className="agent-grid">
             {agents.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                running={engine.running}
-                active={engine.activeAgent === agent.id}
-              />
+              <div key={agent.id} onClick={() => setTraceAgent(agent)}>
+                <AgentCard
+                  agent={agent}
+                  running={engine.running}
+                  active={engine.activeAgent === agent.id}
+                />
+              </div>
             ))}
           </div>
         </div>
         <div className="center-column">
           <KnowledgeGraph {...engine} />
-          <MissionOutput report={engine.report} />
+          <MissionOutput 
+            report={engine.report} 
+            mission={engine.mission} 
+            mode={engine.mode} 
+            runMission={engine.runMission} 
+            running={engine.running} 
+          />
         </div>
         <div className="right-column">
-          <LiveTerminal feed={engine.feed} />
-          <Timeline events={engine.events} running={engine.running} />
-          <DebatePanel running={engine.running} debate={engine.debate} />
-          <MemoryPanel memory={engine.memory} />
+          <RightPanel engine={engine} />
         </div>
       </section>
+
+      {traceAgent && (
+        <AgentTraceModal 
+          agent={traceAgent} 
+          trace={engine.fullTraces[traceAgent.id]} 
+          onClose={() => setTraceAgent(null)} 
+        />
+      )}
+
+      {compareOpen && (
+        <ComparisonModal 
+          sessions={engine.sessions} 
+          onClose={() => setCompareOpen(false)} 
+        />
+      )}
     </main>
   );
 }

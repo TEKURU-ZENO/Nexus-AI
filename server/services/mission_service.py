@@ -50,15 +50,35 @@ def fallback_output(agent: dict, mission: str, mode: str, remembered: list[str])
     return outputs.get(agent["id"], f"{agent['name']} completed analysis for {mission}.")
 
 
-async def emit_agent(agent: dict, mission: str, mode: str, remembered: list[str]) -> AsyncIterator[dict]:
+async def emit_agent(
+    agent: dict, 
+    mission: str, 
+    mode: str, 
+    remembered: list[str], 
+    agent_history: dict[str, str] = None, 
+    refinement: str = None
+) -> AsyncIterator[dict]:
     yield {"type": "agent_start", "agent": agent["id"], "message": f"{agent['name']} activated."}
     await asyncio.sleep(0.2)
 
     if openai_service.enabled:
+        history_str = ""
+        if agent_history:
+            history_str = "\n\nPreceding Agent Analyses (build upon these findings and maintain consistency):\n"
+            for prev_id, prev_out in agent_history.items():
+                prev_name = prev_id.capitalize()
+                history_str += f"--- {prev_name} Output ---\n{prev_out}\n\n"
+
+        refinement_str = ""
+        if refinement:
+            refinement_str = f"\n\nRefinement Request (Please address this user criticism/instruction): {refinement}\n"
+
         prompt = (
             f"Mission: {mission}\n"
             f"Mission mode: {mode}\n"
-            f"Relevant memory: {remembered or 'none'}\n\n"
+            f"Relevant memory: {remembered or 'none'}\n"
+            f"{history_str}"
+            f"{refinement_str}\n"
             "Produce concise, high-signal analysis for an AI-native strategic workflow platform. "
             "Format with: Risk Level, Observation, Strategic Opportunity, Recommendation, Confidence. "
             "Be specific, decisive, practical, and avoid AGI fantasy language."
@@ -100,9 +120,10 @@ def section(label: str, text: str, risk: str, recommendation: str) -> dict:
     }
 
 
-async def stream_mission(mission: str, mode: str = "Strategic Planning") -> AsyncIterator[dict]:
+async def stream_mission(mission: str, mode: str = "Strategic Planning", refinement: str = None) -> AsyncIterator[dict]:
     remembered = recall(mission)
-    yield {"type": "mission_start", "agent": "orchestrator", "message": f"{mode} mission accepted: {mission}"}
+    refinement_msg = f" | Refinement Vector: {refinement}" if refinement else ""
+    yield {"type": "mission_start", "agent": "orchestrator", "message": f"{mode} mission accepted: {mission}{refinement_msg}"}
     if remembered:
         yield {
             "type": "memory_recall",
@@ -114,7 +135,7 @@ async def stream_mission(mission: str, mode: str = "Strategic Planning") -> Asyn
     agent_outputs: dict[str, str] = {}
     for agent in AGENT_ORDER:
         output_parts = []
-        async for event in emit_agent(agent, mission, mode, remembered):
+        async for event in emit_agent(agent, mission, mode, remembered, agent_outputs, refinement):
             if event["type"] == "agent_delta":
                 output_parts.append(event["message"])
             yield event
@@ -123,6 +144,10 @@ async def stream_mission(mission: str, mode: str = "Strategic Planning") -> Asyn
     debate_context = json.dumps(agent_outputs, indent=2)
     critic_prompt = (
         f"Mission: {mission}\nMission mode: {mode}\nAgent outputs:\n{debate_context}\n\n"
+    )
+    if refinement:
+        critic_prompt += f"Note: The user previously requested this refinement: {refinement}. Check if the agents successfully addressed it, and identify any remaining gaps.\n\n"
+    critic_prompt += (
         "Attack the plan with useful skepticism. Detect scalability issues, weak business models, unrealistic assumptions, "
         "technical bottlenecks, regulatory concerns, and missing user incentives. Format with: Risk Level, Most Dangerous Assumption, "
         "Reasoning, Proof Required, Recommendation."
@@ -179,4 +204,5 @@ async def stream_mission(mission: str, mode: str = "Strategic Planning") -> Asyn
     summary = f"{synthesis['sections'][0]['text']} Threat: {synthesis['sections'][-1]['text']}"
     remember(mission, summary)
     yield {"type": "memory_commit", "agent": "memory", "message": f"Memory committed: {summary[:180]}"}
-    yield {"type": "mission_complete", "agent": "orchestrator", "message": "Synthesis complete.", "report": synthesis}
+    yield {"type": "mission_complete", "agent": "orchestrator", "message": "Synthesis complete.", "report": synthesis, "full_traces": agent_outputs}
+
