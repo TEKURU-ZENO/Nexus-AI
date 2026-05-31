@@ -49,7 +49,7 @@ Generated directives include risk levels, reasoning, recommendations, agent deba
 
 ---
 
-## Codex / Antigravity Implementation Attribution (20 Points Criterion)
+## Codex Implementation Attribution
 
 NEXUS was developed in collaboration with Codex (using the Antigravity developer agent) to build, configure, and secure the platform. Codex facilitated:
 
