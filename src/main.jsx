@@ -621,40 +621,207 @@ function MissionConsole({ mission, setMission, mode, setMode, sessions, loadSess
 
 function KnowledgeGraph({ mission, graphPulse, activeAgent }) {
   const keywords = missionKeywords(mission);
-  const nodes = ['NEXUS', ...keywords, activeAgent].slice(0, 10);
+  
+  const categories = [
+    { id: 'researcher', label: 'Discovery', color: '#b6ff6a', defaultKeyword: 'Insights' },
+    { id: 'architect', label: 'Architecture', color: '#ffcc66', defaultKeyword: 'Blueprints' },
+    { id: 'strategist', label: 'Strategy', color: '#ff7ad9', defaultKeyword: 'Viability' },
+    { id: 'critic', label: 'Risk Analysis', color: '#ff5b6e', defaultKeyword: 'Mitigations' },
+    { id: 'memory', label: 'Context Fabric', color: '#9c8cff', defaultKeyword: 'State' }
+  ];
+
+  const getCategory = (word) => {
+    const lower = word.toLowerCase();
+    if (['market', 'launch', 'monetize', 'growth', 'business', 'model', 'product', 'startup', 'monetization', 'value', 'viability', 'strategy'].some(x => lower.includes(x))) {
+      return 'strategist';
+    }
+    if (['system', 'platform', 'architect', 'design', 'infra', 'data', 'software', 'app', 'engineering', 'blueprint', 'flows'].some(x => lower.includes(x))) {
+      return 'architect';
+    }
+    if (['risk', 'error', 'threat', 'vulnerability', 'attack', 'security', 'failure', 'objections', 'weakness', 'mitigation'].some(x => lower.includes(x))) {
+      return 'critic';
+    }
+    if (['memory', 'context', 'history', 'database', 'seed', 'archive', 'state', 'principle', 'preference'].some(x => lower.includes(x))) {
+      return 'memory';
+    }
+    return 'researcher';
+  };
+
+  const keywordGroups = {
+    researcher: [],
+    architect: [],
+    strategist: [],
+    critic: [],
+    memory: []
+  };
+
+  keywords.forEach(word => {
+    const cat = getCategory(word);
+    if (keywordGroups[cat]) {
+      keywordGroups[cat].push(word.toUpperCase());
+    }
+  });
+
+  categories.forEach(cat => {
+    if (keywordGroups[cat.id].length === 0) {
+      keywordGroups[cat.id].push(cat.defaultKeyword.toUpperCase());
+    }
+  });
+
+  const rootPos = { x: 8, y: 50 };
+  const categoryPos = {
+    researcher: { x: 38, y: 15 },
+    architect: { x: 38, y: 32.5 },
+    strategist: { x: 38, y: 50 },
+    critic: { x: 38, y: 67.5 },
+    memory: { x: 38, y: 85 }
+  };
+
+  const leaves = [];
+  categories.forEach(cat => {
+    const groupWords = keywordGroups[cat.id];
+    const catY = categoryPos[cat.id].y;
+    const N = groupWords.length;
+    const spacing = 7;
+    
+    groupWords.forEach((word, index) => {
+      const leafY = catY + (index - (N - 1) / 2) * spacing;
+      leaves.push({
+        word,
+        parentId: cat.id,
+        parentColor: cat.color,
+        x: 76,
+        y: leafY
+      });
+    });
+  });
+
+  const isAgentActive = (id) => activeAgent === id;
+
   return (
     <section className="graph-panel panel">
       <div className="panel-title">
         <div><Network size={18} /> Dynamic Knowledge Graph</div>
-        <span>live expansion</span>
+        <span>live hierarchy mapping</span>
       </div>
       <div className="graph-space">
-        {nodes.map((node, index) => {
-          const angle = (index / nodes.length) * Math.PI * 2 + graphPulse * 0.12;
-          const radius = index === 0 ? 0 : 34 + (index % 3) * 11;
-          const x = 50 + Math.cos(angle) * radius;
-          const y = 50 + Math.sin(angle) * radius * 0.65;
+        <svg className="graph-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {categories.map(cat => {
+            const active = isAgentActive(cat.id) || activeAgent === 'orchestrator';
+            return (
+              <line
+                key={`root-to-${cat.id}`}
+                x1={rootPos.x}
+                y1={rootPos.y}
+                x2={categoryPos[cat.id].x}
+                y2={categoryPos[cat.id].y}
+                style={{
+                  stroke: active ? cat.color : 'rgba(125, 249, 255, 0.08)',
+                  strokeWidth: active ? 0.6 : 0.2,
+                  transition: 'all 0.5s ease'
+                }}
+                className={active ? 'graph-line-active' : ''}
+              />
+            );
+          })}
+
+          {leaves.map((leaf, index) => {
+            const active = isAgentActive(leaf.parentId) || activeAgent === 'orchestrator';
+            const catPos = categoryPos[leaf.parentId];
+            return (
+              <line
+                key={`cat-to-leaf-${index}`}
+                x1={catPos.x}
+                y1={catPos.y}
+                x2={leaf.x}
+                y2={leaf.y}
+                style={{
+                  stroke: active ? leaf.parentColor : 'rgba(125, 249, 255, 0.08)',
+                  strokeWidth: active ? 0.4 : 0.15,
+                  transition: 'all 0.5s ease'
+                }}
+                className={active ? 'graph-line-active' : ''}
+              />
+            );
+          })}
+        </svg>
+
+        <motion.div
+          className="graph-node core"
+          style={{ left: `${rootPos.x}%`, top: `${rootPos.y}%` }}
+          animate={{
+            scale: activeAgent === 'orchestrator' ? [1, 1.08, 1] : [1, 1.02, 1],
+            boxShadow: activeAgent === 'orchestrator' 
+              ? '0 0 30px rgba(125, 249, 255, 0.6)' 
+              : '0 0 15px rgba(125, 249, 255, 0.2)'
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          NEXUS
+        </motion.div>
+
+        {categories.map(cat => {
+          const active = isAgentActive(cat.id);
+          const pos = categoryPos[cat.id];
           return (
             <motion.div
-              className={index === 0 ? 'graph-node core' : 'graph-node'}
-              key={`${node}-${index}`}
-              style={{ left: `${x}%`, top: `${y}%` }}
-              animate={{ scale: index === 0 ? [1, 1.12, 1] : [0.92, 1.04, 0.92] }}
-              transition={{ duration: 2.4, repeat: Infinity, delay: index * 0.12 }}
+              key={cat.id}
+              className={`graph-node category-node ${active ? 'active' : ''}`}
+              style={{
+                left: `${pos.x}%`,
+                top: `${pos.y}%`,
+                border: `1px solid ${active ? cat.color : 'rgba(255, 255, 255, 0.15)'}`,
+                color: active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
+                textShadow: active ? `0 0 8px ${cat.color}` : 'none',
+                boxShadow: active ? `0 0 15px ${cat.color}33` : 'none',
+                zIndex: active ? 10 : 2
+              }}
+              animate={active ? { scale: 1.05 } : { scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             >
-              {node}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span 
+                  style={{ 
+                    width: '6px', 
+                    height: '6px', 
+                    borderRadius: '50%', 
+                    backgroundColor: cat.color,
+                    boxShadow: `0 0 6px ${cat.color}`,
+                    display: 'inline-block'
+                  }} 
+                />
+                {cat.label}
+              </div>
             </motion.div>
           );
         })}
-        <svg className="graph-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {nodes.slice(1).map((_, index) => {
-            const angle = ((index + 1) / nodes.length) * Math.PI * 2 + graphPulse * 0.12;
-            const radius = 34 + ((index + 1) % 3) * 11;
-            const x = 50 + Math.cos(angle) * radius;
-            const y = 50 + Math.sin(angle) * radius * 0.65;
-            return <line key={index} x1="50" y1="50" x2={x} y2={y} />;
-          })}
-        </svg>
+
+        {leaves.map((leaf, index) => {
+          const active = isAgentActive(leaf.parentId);
+          return (
+            <motion.div
+              key={`leaf-${index}`}
+              className={`graph-node leaf-node ${active ? 'active' : ''}`}
+              style={{
+                left: `${leaf.x}%`,
+                top: `${leaf.y}%`,
+                border: `1px solid ${active ? leaf.parentColor + '88' : 'rgba(255, 255, 255, 0.08)'}`,
+                color: active ? '#ffffff' : 'rgba(255, 255, 255, 0.4)',
+                backgroundColor: 'rgba(2, 12, 23, 0.9)',
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                padding: '4px 8px',
+                minHeight: 'auto',
+                boxShadow: active ? `0 0 8px ${leaf.parentColor}22` : 'none',
+                zIndex: active ? 9 : 1
+              }}
+              animate={active ? { scale: 1.02 } : { scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              {leaf.word}
+            </motion.div>
+          );
+        })}
       </div>
     </section>
   );
@@ -799,49 +966,74 @@ function MissionOutput({ report, mission, mode, runMission, running }) {
         <span>{report ? `${report.confidence}% confidence` : 'assembling'}</span>
       </div>
       {report ? (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div className="output-body">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0 }}>{report.title}</h2>
             <button className="secondary" onClick={exportReport} style={{ height: '34px', fontSize: '12px' }}>
               <Zap size={14} /> Export Report (.md)
             </button>
           </div>
 
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '10px', color: 'rgba(125, 249, 255, 0.65)', fontFamily: 'monospace' }}>
+            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>MISSION SECURE ID: NXS-8942-A</span>
+            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>LATENCY: 1.42s</span>
+            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>MESH: 6 ACTIVE</span>
+            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>SEED: 0x9f32e</span>
+          </div>
+
           <div className="confidence-breakdown">
             <div className="breakdown-bar">
               <span>Desirability (Researcher)</span>
-              <div className="meter-bg"><div className="meter-fill" style={{ width: '88%', backgroundColor: '#b6ff6a' }} /></div>
+              <div className="meter-bg">
+                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '88%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.1 }} style={{ backgroundColor: '#b6ff6a' }} />
+              </div>
               <span>88%</span>
             </div>
             <div className="breakdown-bar">
               <span>Feasibility (Architect)</span>
-              <div className="meter-bg"><div className="meter-fill" style={{ width: '86%', backgroundColor: '#7df9ff' }} /></div>
+              <div className="meter-bg">
+                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '86%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.2 }} style={{ backgroundColor: '#7df9ff' }} />
+              </div>
               <span>86%</span>
             </div>
             <div className="breakdown-bar">
               <span>Viability (Strategist)</span>
-              <div className="meter-bg"><div className="meter-fill" style={{ width: '87%', backgroundColor: '#ff7ad9' }} /></div>
+              <div className="meter-bg">
+                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '87%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.3 }} style={{ backgroundColor: '#ff7ad9' }} />
+              </div>
               <span>87%</span>
             </div>
             <div className="breakdown-bar">
               <span>Resilience (Critic)</span>
-              <div className="meter-bg"><div className="meter-fill" style={{ width: '91%', backgroundColor: '#ff5b6e' }} /></div>
+              <div className="meter-bg">
+                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '91%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.4 }} style={{ backgroundColor: '#ff5b6e' }} />
+              </div>
               <span>91%</span>
             </div>
           </div>
 
-          <div className="report-grid">
-            {report.sections.map((section) => (
-              <article key={section.label}>
+          <motion.div 
+            className="report-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {report.sections.map((section, idx) => (
+              <motion.article 
+                key={section.label}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
+              >
                 <div className="report-head">
                   <strong>{section.label}</strong>
                   {section.risk && <span className={`risk ${section.risk.toLowerCase()}`}>Risk {section.risk}</span>}
                 </div>
                 <p>{section.text}</p>
                 {section.recommendation && <small>{section.recommendation}</small>}
-              </article>
+              </motion.article>
             ))}
-          </div>
+          </motion.div>
 
           <div className="refinement-area">
             <label>Adversarial Feedback Loop (Refine Directive)</label>
@@ -857,7 +1049,7 @@ function MissionOutput({ report, mission, mode, runMission, running }) {
               </button>
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <div className="skeleton-stack">
           <i />
@@ -987,64 +1179,111 @@ function ComparisonModal({ sessions, onClose }) {
 
 function LandingPage({ onEnter, connectionState }) {
   const statusConfig = {
-    live: { label: 'System Status: LIVE ORCHESTRATION', class: 'live' },
-    simulation: { label: 'System Status: LOCAL SIMULATION', class: 'sim' },
-    offline: { label: 'System Status: OFFLINE MODE', class: 'offline' },
-    checking: { label: 'System Status: Connecting...', class: '' }
+    live: { label: 'SYSTEM STATE: OPERATIONAL (LIVE)', class: 'live' },
+    simulation: { label: 'SYSTEM STATE: SIMULATED NODE', class: 'sim' },
+    offline: { label: 'SYSTEM STATE: OFFLINE DIRECTIVE', class: 'offline' },
+    checking: { label: 'SYSTEM STATE: INITIALIZING...', class: '' }
   };
   const currentStatus = statusConfig[connectionState] || statusConfig.checking;
+
+  const [logs, setLogs] = useState([
+    'NEXUS SYSTEM DECRYPT KEY LOADED [0x9f32e]',
+    'CORE SUBSYSTEMS ARMED: 6 AGENT NODES DETECTED',
+    'MEMORY PERSISTENCE: READY'
+  ]);
+
+  useEffect(() => {
+    const mockFeed = [
+      'Establishing API link to OpenAI Responses Engine...',
+      'Secure socket handshake verified: 1024-bit key exchange',
+      'Injecting dynamic memory index parameters...',
+      'Cognitive debate parameters set to adversarial mode',
+      'Ready for strategic mission intake...'
+    ];
+    let idx = 0;
+    const interval = setInterval(() => {
+      if (idx < mockFeed.length) {
+        setLogs((current) => [...current, `[${new Date().toLocaleTimeString()}] ${mockFeed[idx]}`].slice(-6));
+        idx++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <main className="landing-shell">
       <Starfield />
       <div className="grid-bg" />
-      <div className="landing-content">
+      <div className="landing-content-split">
         <motion.div 
-          className="hero"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="landing-left"
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
         >
           <div className="landing-badge">
-            <Atom size={16} /> <span>V1.0.0 RELEASE</span>
+            <Atom size={16} /> <span>NEXUS OPERATING SYSTEM</span>
           </div>
           <h1>NEXUS</h1>
-          <p className="subtitle">AI-Native Collaborative Strategy & System Orchestration Platform</p>
+          <p className="subtitle">Collaborative Strategy & Multi-Agent Orchestration</p>
           <p className="tagline">
             Decompose complex missions, orchestrate sequential agent chains of thought, debate plan safety adversarially, and compile production-ready strategic directives.
           </p>
 
-          <div className="status-indicator">
+          <div className={`status-indicator ${currentStatus.class}`}>
             <span className={`status-dot ${currentStatus.class}`} /> {currentStatus.label}
           </div>
 
           <div className="landing-actions">
             <button className="primary" onClick={onEnter}>
-              <Play size={18} /> Enter Command Console
+              <Play size={18} /> Initiate Connection
             </button>
             <a href="https://github.com/TEKURU-ZENO/Nexus-AI" target="_blank" rel="noreferrer" className="secondary btn-link">
-              <GitBranch size={17} /> View Repository
+              <GitBranch size={17} /> Source Code
             </a>
           </div>
         </motion.div>
 
-        <div className="landing-features">
-          <div className="feature-card">
-            <BrainCircuit size={24} />
-            <h3>Chain-of-Thought Mesh</h3>
-            <p>Downstream agents build on the preceding plan, creating unified strategic outputs.</p>
+        <motion.div 
+          className="landing-right"
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          <div className="terminal-card">
+            <div className="terminal-header">
+              <div className="dots"><span /><span /><span /></div>
+              <span>NEXUS_OS_TELEMETRY.LOG</span>
+            </div>
+            <div className="terminal-logs">
+              {logs.map((log, idx) => (
+                <div className="log-line" key={idx}>
+                  <span className="log-arrow">&gt;&gt;</span> {log}
+                </div>
+              ))}
+              <div className="log-line blinking-log">
+                <span className="log-arrow">&gt;&gt;</span> AWAITING CONNECTION VECTOR...
+              </div>
+            </div>
           </div>
-          <div className="feature-card">
-            <ShieldAlert size={24} />
-            <h3>Adversarial Stress Testing</h3>
-            <p>Adversarial agent debates identify scalability issues, regulatory risks, and technical bottlenecks.</p>
+
+          <div className="tactical-specs">
+            <div className="spec-item">
+              <span>AGENTS INSTANTIATED</span>
+              <b>06 UNITS</b>
+            </div>
+            <div className="spec-item">
+              <span>SECURE MESH PORTS</span>
+              <b>SSL/NDJSON</b>
+            </div>
+            <div className="spec-item">
+              <span>REASONING PIPELINE</span>
+              <b>SEQUENTIAL CHAIN</b>
+            </div>
           </div>
-          <div className="feature-card">
-            <DatabaseZap size={24} />
-            <h3>Durable Memory Fabric</h3>
-            <p>Persistent semantic memory automatically recalls and correlates past directives.</p>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </main>
   );

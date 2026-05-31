@@ -436,14 +436,14 @@ button {
 }
 
 .graph-panel {
-  min-height: 390px;
-  flex: 1;
+  height: 220px;
+  min-height: 220px;
+  flex: 0 0 auto;
 }
 
 .graph-space {
   position: relative;
-  height: calc(100% - 32px);
-  min-height: 330px;
+  height: calc(100% - 34px);
   overflow: hidden;
   background:
     radial-gradient(circle at center, rgba(125, 249, 255, 0.12), transparent 34%),
@@ -492,7 +492,19 @@ button {
 }
 
 .output {
-  min-height: 286px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.output-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .output h2 {
@@ -744,7 +756,7 @@ button {
 }
 
 /* ==========================================
-   LANDING PAGE STYLES
+   LANDING PAGE STYLES (TACTICAL DEC COMPONENT)
    ========================================== */
 .landing-shell {
   position: relative;
@@ -760,19 +772,19 @@ button {
     linear-gradient(135deg, #02040a 0%, #060b18 48%, #080816 100%);
 }
 
-.landing-content {
+.landing-content-split {
   position: relative;
   z-index: 2;
-  max-width: 1000px;
+  max-width: 1200px;
   width: 100%;
-  text-align: center;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 60px;
+  align-items: center;
 }
 
-.hero {
-  margin-bottom: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.landing-left {
+  text-align: left;
 }
 
 .landing-badge {
@@ -789,28 +801,28 @@ button {
   margin-bottom: 24px;
 }
 
-.hero h1 {
-  font-size: 82px;
+.landing-left h1 {
+  font-size: 96px;
   font-weight: 900;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   margin: 0 0 16px;
   background: linear-gradient(135deg, #eff7ff 30%, #7df9ff 70%, #b6ff6a 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 30px rgba(125, 249, 255, 0.15));
+  filter: drop-shadow(0 0 35px rgba(125, 249, 255, 0.2));
 }
 
 .subtitle {
-  font-size: 22px;
+  font-size: 24px;
   color: #eff7ff;
   margin-bottom: 18px;
   font-weight: 500;
 }
 
 .tagline {
-  font-size: 16px;
+  font-size: 15px;
   color: rgba(229, 242, 255, 0.7);
-  max-width: 680px;
+  max-width: 580px;
   line-height: 1.6;
   margin-bottom: 32px;
 }
@@ -819,7 +831,9 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: rgba(229, 242, 255, 0.8);
   margin-bottom: 40px;
   padding: 8px 16px;
@@ -841,7 +855,6 @@ button {
 .landing-actions {
   display: flex;
   gap: 16px;
-  justify-content: center;
 }
 
 .landing-actions .primary,
@@ -858,45 +871,105 @@ button {
   align-items: center;
 }
 
-.landing-features {
+.landing-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.terminal-card {
+  background: rgba(1, 4, 10, 0.8);
+  border: 1px solid rgba(125, 249, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+.terminal-header {
+  background: rgba(8, 22, 39, 0.9);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(125, 249, 255, 0.12);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  color: rgba(229, 242, 255, 0.55);
+}
+
+.terminal-header .dots {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-header .dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.terminal-logs {
+  padding: 16px;
+  height: 180px;
+  overflow: hidden;
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  color: rgba(229, 242, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-line {
+  display: flex;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.log-arrow {
+  color: #b6ff6a;
+}
+
+.blinking-log {
+  color: #7df9ff;
+  animation: landing-blink 1.5s infinite alternate;
+}
+
+@keyframes landing-blink {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+.tactical-specs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-top: 40px;
+  gap: 16px;
 }
 
-.feature-card {
-  padding: 24px;
-  background: rgba(8, 18, 34, 0.65);
-  border: 1px solid rgba(125, 249, 255, 0.12);
-  border-radius: 8px;
-  backdrop-filter: blur(12px);
+.spec-item {
+  background: rgba(8, 18, 34, 0.6);
+  border: 1px solid rgba(125, 249, 255, 0.1);
+  padding: 12px;
+  border-radius: 4px;
   text-align: left;
-  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.feature-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(125, 249, 255, 0.25);
-  box-shadow: 0 12px 30px rgba(125, 249, 255, 0.08);
+.spec-item span {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: rgba(229, 242, 255, 0.55);
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
-.feature-card svg {
+.spec-item b {
+  font-size: 14px;
   color: #7df9ff;
-  margin-bottom: 16px;
-}
-
-.feature-card h3 {
-  font-size: 18px;
-  margin: 0 0 10px;
-  color: #eff7ff;
-}
-
-.feature-card p {
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(229, 242, 255, 0.65);
-  margin: 0;
 }
 
 /* ==========================================
@@ -1208,4 +1281,97 @@ button {
 .agent-card {
   cursor: pointer;
 }
+
+.metrics {
+  color: rgba(229, 242, 255, 0.7);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  gap: 12px !important;
+  border-color: rgba(125, 249, 255, 0.15) !important;
+}
+
+.metric-item b {
+  color: #7df9ff;
+}
+
+.metric-divider {
+  color: rgba(125, 249, 255, 0.2);
+}
+
+.blinking-dot {
+  animation: blink-dot 1.2s infinite steps(1, start);
+  color: var(--agent);
+  font-weight: bold;
+}
+
+@keyframes blink-dot {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.debate-timeline-bar {
+  position: absolute;
+  left: 20px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  z-index: 1;
+}
+
+.debate-timeline-bar.active {
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 4px,
+    #ff5b6e 4px,
+    #ff5b6e 8px
+  );
+  animation: debate-flow 1.5s linear infinite;
+}
+
+@keyframes debate-flow {
+  from { background-position-y: 0; }
+  to { background-position-y: 40px; }
+}
+
+.debate-line {
+  position: relative;
+  z-index: 2;
+  margin-left: 36px;
+  border-radius: 4px;
+}
+
+.pulse-critic {
+  box-shadow: 0 0 16px rgba(255, 91, 110, 0.25);
+  animation: critic-glow 1.5s ease-in-out infinite alternate;
+}
+
+.pulse-strategist {
+  box-shadow: 0 0 16px rgba(255, 122, 217, 0.25);
+  animation: strategist-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes critic-glow {
+  from { border-color: rgba(255, 91, 110, 0.3); }
+  to { border-color: rgba(255, 91, 110, 0.8); }
+}
+
+@keyframes strategist-glow {
+  from { border-color: rgba(255, 122, 217, 0.3); }
+  to { border-color: rgba(255, 122, 217, 0.8); }
+}
+
+.graph-line-active {
+  stroke-dasharray: 4 2;
+  animation: graph-dash-flow 1.2s linear infinite;
+}
+
+@keyframes graph-dash-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
 
