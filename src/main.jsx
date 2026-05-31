@@ -132,7 +132,7 @@ function missionKeywords(mission) {
   return [...new Set(words.length ? words : fallback)];
 }
 
-function buildReport(mission) {
+function buildReport(mission, refinement = null) {
   const lower = mission.toLowerCase();
   const domain = lower.includes('medical') || lower.includes('hospital')
     ? 'clinical decision support'
@@ -144,7 +144,7 @@ function buildReport(mission) {
           ? 'personalized learning infrastructure'
           : 'AI-native operations';
 
-  return {
+  const report = {
     title: 'Unified Strategic Directive',
     confidence: Math.floor(84 + Math.random() * 10),
     sections: [
@@ -174,6 +174,14 @@ function buildReport(mission) {
       }
     ]
   };
+
+  if (refinement) {
+    report.sections.forEach(sec => {
+      sec.text += ` [Refinement vector applied: aligned strategy with "${refinement}".]`;
+    });
+  }
+
+  return report;
 }
 
 function useMissionEngine() {
@@ -277,7 +285,7 @@ function useMissionEngine() {
     setGraphPulse((value) => value + 1);
   };
 
-  const runLocalMission = (targetMission, targetMode) => {
+  const runLocalMission = (targetMission, targetMode, refinement = null) => {
     stageTemplates.forEach((stage, index) => {
       window.setTimeout(() => {
         setActiveAgent(stage.agent);
@@ -287,7 +295,7 @@ function useMissionEngine() {
     });
 
     window.setTimeout(() => {
-      const nextReport = buildReport(targetMission);
+      const nextReport = buildReport(targetMission, refinement);
       setReport(nextReport);
       const localTraces = {
         orchestrator: "Decomposed mission into research, strategy, architecture, critique, and memory tracks.\nResolved debate into phased execution plan with confidence-weighted decisions.",
@@ -296,6 +304,11 @@ function useMissionEngine() {
         strategist: "Estimating wedge, buyer urgency, monetization, retention loops, and launch sequence.\nRecommends founder-led pilots and outcome-based pricing.",
         critic: "Stress testing assumptions for weak evidence, brittle economics, and trust failures.\nCritique: users will punish vague AI claims. Force evidence checking."
       };
+      if (refinement) {
+        Object.keys(localTraces).forEach(key => {
+          localTraces[key] += `\n[Refinement applied: aligned strategy with "${refinement}"]`;
+        });
+      }
       setFullTraces(localTraces);
       setMemory((current) => [
         `Mission: ${targetMission} | Outcome: ${nextReport.sections[0].text}`,
@@ -402,7 +415,7 @@ function useMissionEngine() {
       await runRemoteMission(targetMission, targetMode, options.refinement);
     } catch {
       appendFeed('system', 'API stream unavailable. Local cognitive simulation engaged.');
-      runLocalMission(targetMission, targetMode);
+      runLocalMission(targetMission, targetMode, options.refinement);
     } finally {
       window.setTimeout(() => {
         setRunning(false);

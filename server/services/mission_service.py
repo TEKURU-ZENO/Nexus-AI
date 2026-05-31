@@ -13,7 +13,7 @@ from server.services.openai_service import openai_service
 AGENT_ORDER = [ORCHESTRATOR, RESEARCHER, ARCHITECT, STRATEGIST]
 
 
-def fallback_output(agent: dict, mission: str, mode: str, remembered: list[str]) -> str:
+def fallback_output(agent: dict, mission: str, mode: str, remembered: list[str], refinement: str = None) -> str:
     memory_note = " Prior related mission detected." if remembered else ""
     outputs = {
         "orchestrator": (
@@ -47,7 +47,10 @@ def fallback_output(agent: dict, mission: str, mode: str, remembered: list[str])
             "Recommendation: force every major claim through evidence, owner, metric, and rollback criteria."
         ),
     }
-    return outputs.get(agent["id"], f"{agent['name']} completed analysis for {mission}.")
+    res = outputs.get(agent["id"], f"{agent['name']} completed analysis for {mission}.")
+    if refinement:
+        res += f" [Refinement integration: adjusted strategy under constraint: \"{refinement}\".]"
+    return res
 
 
 async def emit_agent(
@@ -98,10 +101,10 @@ async def emit_agent(
             yield {"type": "agent_delta", "agent": agent["id"], "message": delta}
         
         if is_error or not output.strip():
-            output = fallback_output(agent, mission, mode, remembered)
+            output = fallback_output(agent, mission, mode, remembered, refinement)
             yield {"type": "agent_delta", "agent": agent["id"], "message": output}
     else:
-        output = fallback_output(agent, mission, mode, remembered)
+        output = fallback_output(agent, mission, mode, remembered, refinement)
         for sentence in output.split(". "):
             chunk = sentence if sentence.endswith(".") else sentence + "."
             yield {"type": "agent_delta", "agent": agent["id"], "message": chunk + " "}
@@ -168,7 +171,7 @@ async def stream_mission(mission: str, mode: str = "Strategic Planning", refinem
             critic_text += delta
             yield {"type": "debate_delta", "agent": "critic", "message": delta}
     if is_critic_error or not critic_text.strip():
-        critic_text = fallback_output(CRITIC, mission, mode, remembered)
+        critic_text = fallback_output(CRITIC, mission, mode, remembered, refinement)
         yield {"type": "debate_delta", "agent": "critic", "message": critic_text}
 
     synthesis = {
