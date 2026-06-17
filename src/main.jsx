@@ -32,7 +32,7 @@ const agents = [
     name: 'Orchestrator',
     role: 'Mission control',
     icon: BrainCircuit,
-    color: '#7df9ff',
+    color: '#3291ff',
     tone: 'coordinates task decomposition, routing, and synthesis'
   },
   {
@@ -40,7 +40,7 @@ const agents = [
     name: 'Researcher',
     role: 'Signal discovery',
     icon: FileSearch,
-    color: '#b6ff6a',
+    color: '#3291ff',
     tone: 'maps markets, competitors, evidence, and edge cases'
   },
   {
@@ -48,7 +48,7 @@ const agents = [
     name: 'Architect',
     role: 'System design',
     icon: CircuitBoard,
-    color: '#ffcc66',
+    color: '#3291ff',
     tone: 'turns ideas into flows, interfaces, APIs, and infra'
   },
   {
@@ -56,7 +56,7 @@ const agents = [
     name: 'Strategist',
     role: 'Growth logic',
     icon: Rocket,
-    color: '#ff7ad9',
+    color: '#3291ff',
     tone: 'models positioning, monetization, GTM, and scale'
   },
   {
@@ -64,7 +64,7 @@ const agents = [
     name: 'Critic',
     role: 'Threat analysis',
     icon: ShieldAlert,
-    color: '#ff5b6e',
+    color: '#ff0055',
     tone: 'attacks weak assumptions and failure modes'
   },
   {
@@ -72,7 +72,7 @@ const agents = [
     name: 'Memory Agent',
     role: 'Context fabric',
     icon: DatabaseZap,
-    color: '#9c8cff',
+    color: '#3291ff',
     tone: 'stores durable conclusions and recalls project history'
   }
 ];
@@ -97,7 +97,6 @@ const bootLines = [
   'SYNCHRONIZING AGENT MESH',
   'MEMORY FABRIC INDEXED',
   'DEBATE ENGINE ARMED',
-  'TACTICAL GRAPH RENDERER ACTIVE',
   'AWAITING MISSION VECTOR'
 ];
 
@@ -134,51 +133,56 @@ function missionKeywords(mission) {
 
 function buildReport(mission, refinement = null) {
   const lower = mission.toLowerCase();
-  const domain = lower.includes('medical') || lower.includes('hospital')
-    ? 'clinical decision support'
+  
+  const decision = lower.includes('medical') || lower.includes('hospital')
+    ? 'PROCEED WITH CLINICAL DECISION SUPPORT SUPERVISION CONSOLE FOR HIGH-RISK LABELS'
     : lower.includes('fitness')
-      ? 'adaptive health wearables'
+      ? 'DEPLOY WEARABLE EDGE-COMPUTE MODEL WITH LOCAL DATA PRIVACY SANITIZATION'
       : lower.includes('cyber')
-        ? 'autonomous security operations'
+        ? 'ENGAGE ISOLATED SANDBOX CONTAINER PLAYBOOKS FOR IMMEDIATE COMPROMISE ISOLATION'
         : lower.includes('education')
-          ? 'personalized learning infrastructure'
-          : 'AI-native operations';
+          ? 'LAUNCH SEMI-SUPERVISED PERSONALIZED TUTORING PLATFORM IN SPECIAL EDUCATION COHORTS'
+          : 'DEPLOY PILOT MESH FOR HIGH-FREQUENCY STRATEGIC WORKFLOW AUTO-ASSISTANCE';
+
+  const rationale = lower.includes('medical') || lower.includes('hospital')
+    ? 'Supervised integration balances liability exposure with doctor review workflows before full automation validation.'
+    : 'Local edge compute maximizes compliance, user trust, and processing speed on portable nodes.';
 
   const report = {
-    title: 'Unified Strategic Directive',
-    confidence: Math.floor(84 + Math.random() * 10),
+    title: 'Strategic Directive',
+    confidence: 91,
+    decision,
+    rationale,
     sections: [
       {
-        label: 'Wedge',
-        text: `Start with a narrow ${domain} workflow where urgency is high, outcomes are visible, and users already feel the cost of poor coordination.`,
-        risk: 'Medium',
-        recommendation: 'Choose one measurable pilot workflow before expanding the platform narrative.'
+        label: 'Reasoning',
+        text: `Analysis indicates high initial transaction friction in this space. Standardizing workflows onto a consolidated cognitive mesh resolves coordination bottlenecks and exposes operational anomalies. We recommend launching concierge pilots to generate hard performance case studies.`
       },
       {
-        label: 'Product',
-        text: 'Ship a mission console: intake, agent analysis, evidence trail, risk panel, decision lock, and exportable operating plan.',
-        risk: 'Low',
-        recommendation: 'Make the operator review loop the product center of gravity.'
+        label: 'Tradeoffs',
+        text: `Phased rollouts limit liability and secure customer trust, but slow down data collection pipelines. A tighter loop with manual locks decreases speed-to-autonomy but significantly mitigates outlier failure risk.`
       },
       {
-        label: 'GTM',
-        text: 'Land with founder-led pilots, convert proof into case studies, then expand through templates, integrations, and recurring intelligence reviews.',
-        risk: 'Medium',
-        recommendation: 'Sell outcomes and review speed, not autonomy.'
+        label: 'Execution Plan',
+        text: `Phase 1: Instantiate security controls and baseline audit logging. Phase 2: Deploy supervised decision locks on pilot sites. Phase 3: Roll out automation templates based on case study feedback.`
       },
       {
-        label: 'Threats',
-        text: 'Primary risks are trust, data quality, buyer inertia, hallucinated certainty, and competitors copying the surface-level interface.',
-        risk: 'High',
-        recommendation: 'Expose uncertainty, audit trails, and explicit human decision locks.'
+        label: 'Success Metrics',
+        text: `Target a 50% decrease in manual triage latency, 100% decision ledger auditability, and greater than 90% customer retention during the initial pilot phase.`
       }
+    ],
+    tasks: [
+      'Initialize secure database ledger and state indexers',
+      'Deploy human-in-the-loop decision console',
+      'Publish outcomes case study for stakeholder alignment'
     ]
   };
 
   if (refinement) {
     report.sections.forEach(sec => {
-      sec.text += ` [Refinement vector applied: aligned strategy with "${refinement}".]`;
+      sec.text += ` [Refinement applied: aligned strategy with "${refinement}".]`;
     });
+    report.decision += ` (REFINED)`;
   }
 
   return report;
@@ -202,6 +206,7 @@ function useMissionEngine() {
   const [report, setReport] = useState(buildReport(demoMissions[0]));
   const [activeAgent, setActiveAgent] = useState('orchestrator');
   const [graphPulse, setGraphPulse] = useState(0);
+  const [decisionStatus, setDecisionStatus] = useState('pending');
   const [sessions, setSessions] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('nexus.sessions') || '[]');
@@ -256,6 +261,7 @@ function useMissionEngine() {
     setMode(session.mode || missionModes[0]);
     setReport(session.report);
     setDebate(session.debate?.length ? session.debate : debate);
+    setDecisionStatus(session.report?.decisionStatus || 'pending');
     setFeed([
       { id: crypto.randomUUID(), agent: 'memory', text: `Session reopened: ${session.mission}` },
       { id: crypto.randomUUID(), agent: 'orchestrator', text: `${session.mode || 'Strategic Planning'} directive restored from mission history.` },
@@ -382,9 +388,34 @@ function useMissionEngine() {
         }
 
         if (event.type === 'mission_complete') {
-          setReport(event.report);
+          const rawReport = event.report;
+          const sections = rawReport.sections || [];
+          
+          const decisionText = targetMission.toLowerCase().includes('medical') || targetMission.toLowerCase().includes('hospital')
+            ? 'PROCEED WITH CLINICAL DECISION SUPPORT SUPERVISION CONSOLE FOR HIGH-RISK LABELS'
+            : 'DEPLOY PILOT COGNITIVE MESH SYSTEM FOR TARGET OPERATIONS';
+            
+          const mckinseyReport = {
+            title: rawReport.title || 'Strategic Directive',
+            confidence: rawReport.confidence || 91,
+            decision: decisionText,
+            rationale: sections[3]?.recommendation || 'Expected impact outweighs implementation complexity.',
+            sections: [
+              { label: 'Reasoning', text: sections[0]?.text || 'No preceding analysis.' },
+              { label: 'Tradeoffs', text: sections[1]?.text || 'No tradeoff analysis.' },
+              { label: 'Execution Plan', text: sections[2]?.text || 'No execution details.' },
+              { label: 'Success Metrics', text: sections[3]?.text || 'No metrics provided.' }
+            ],
+            tasks: [
+              sections[0]?.recommendation || 'Initiate first phase wedge',
+              sections[1]?.recommendation || 'Configure core workflow hooks',
+              sections[2]?.recommendation || 'Establish pilot telemetry metric ledger'
+            ]
+          };
+
+          setReport(mckinseyReport);
           setFullTraces(event.full_traces || {});
-          persistSession(event.report, debate, targetMission, targetMode);
+          persistSession(mckinseyReport, debate, targetMission, targetMode);
           setRunning(false);
           setActiveAgent('memory');
         }
@@ -397,6 +428,7 @@ function useMissionEngine() {
     setMission(targetMission);
     setMode(targetMode);
     setRunning(true);
+    setDecisionStatus('pending');
     setFeed(
       options.cinematic
         ? demoPrelude.map((text, index) => ({ id: `demo-${index}-${Date.now()}`, agent: 'system', text }))
@@ -421,6 +453,36 @@ function useMissionEngine() {
         setRunning(false);
       }, 18000);
     }
+  };
+
+  const acceptDecision = () => {
+    if (!report) return;
+    setDecisionStatus('accepted');
+    const commitMsg = `Accepted recommended decision: ${report.decision}`;
+    setMemory((current) => [commitMsg, ...current].slice(0, 6));
+    appendFeed('system', commitMsg);
+    
+    const updatedReport = { ...report, decisionStatus: 'accepted' };
+    setReport(updatedReport);
+    
+    setSessions((current) => {
+      const updated = current.map(s => {
+        if (s.mission === mission && s.mode === mode) {
+          return { ...s, report: updatedReport };
+        }
+        return s;
+      });
+      localStorage.setItem('nexus.sessions', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const challengeDecision = () => {
+    if (!report) return;
+    setDecisionStatus('challenged');
+    const refinementText = `Re-evaluate tradeoffs under safety and adversarial constraints: "${report.decision}"`;
+    appendFeed('critic', `Challenging recommended decision. Initiating critical revision...`);
+    runMission(mission, mode, { refinement: refinementText });
   };
 
   const startDemo = () => {
@@ -453,7 +515,10 @@ function useMissionEngine() {
     activeAgent,
     graphPulse,
     connectionState,
-    fullTraces
+    fullTraces,
+    decisionStatus,
+    acceptDecision,
+    challengeDecision
   };
 }
 
@@ -479,14 +544,14 @@ function Starfield() {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({ color: '#7df9ff', size: 0.16, transparent: true, opacity: 0.55 });
+    const material = new THREE.PointsMaterial({ color: '#7df9ff', size: 0.16, transparent: true, opacity: 0.25 });
     const stars = new THREE.Points(geometry, material);
     scene.add(stars);
 
     let frame;
     const animate = () => {
-      stars.rotation.y += 0.0009;
-      stars.rotation.x += 0.00025;
+      stars.rotation.y += 0.0005;
+      stars.rotation.x += 0.00015;
       renderer.render(scene, camera);
       frame = requestAnimationFrame(animate);
     };
@@ -523,20 +588,17 @@ function Topbar({ running, connectionState }) {
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="brand-mark"><Atom size={20} /></div>
+        <div className="brand-mark"><Atom size={16} /></div>
         <div>
           <h1>NEXUS</h1>
-          <span>AI-native strategic workflow platform</span>
+          <span>autonomous strategic operating system</span>
         </div>
       </div>
       <div className="top-actions">
         <div className={`status-pill ${currentStatus.class}`}>
-          <Activity size={15} /> {currentStatus.label}
+          <span className={`status-dot ${currentStatus.class}`} />
+          {currentStatus.label}
         </div>
-        <div className="status-pill">
-          <Activity size={15} /> Cognitive mesh {running ? 'surging' : 'stable'}
-        </div>
-        <button className="icon-btn" aria-label="Scan"><ScanLine size={18} /></button>
         <button className="icon-btn" aria-label="Lock"><Lock size={18} /></button>
       </div>
     </header>
@@ -545,16 +607,16 @@ function Topbar({ running, connectionState }) {
 
 function Sidebar() {
   const items = [
-    ['Mission', Radar],
-    ['Agents', Network],
-    ['Graph', GitBranch],
-    ['Memory', DatabaseZap],
-    ['Threats', ShieldAlert]
+    ['Command Console', Radar],
+    ['Agent Mesh', Network],
+    ['Knowledge Graph', GitBranch],
+    ['Memory Fabric', DatabaseZap],
+    ['System Security', ShieldAlert]
   ];
   return (
     <aside className="sidebar">
       {items.map(([label, Icon], index) => (
-        <button className={index === 0 ? 'side-item active' : 'side-item'} key={label} title={label}>
+        <button className={index === 0 ? 'side-item active' : 'side-item'} key={label} data-tooltip={label}>
           <Icon size={19} />
           <span>{label}</span>
         </button>
@@ -563,279 +625,168 @@ function Sidebar() {
   );
 }
 
-function AgentCard({ agent, active, running }) {
-  const Icon = agent.icon;
-  const confidence = useMemo(() => Math.floor(76 + Math.random() * 21), [running, active]);
-  return (
-    <motion.div
-      className={active ? 'agent-card active' : 'agent-card'}
-      style={{ '--agent': agent.color }}
-      animate={{ y: active ? -3 : 0, opacity: active ? 1 : 0.78 }}
-      transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-    >
-      <div className="agent-head">
-        <div className="agent-icon"><Icon size={20} /></div>
-        <div>
-          <strong>{agent.name}</strong>
-          <span>{agent.role}</span>
-        </div>
-      </div>
-      <p>{agent.tone}</p>
-      <div className="agent-meta">
-        <span>{active && running ? 'thinking' : active ? 'primed' : 'standby'}</span>
-        <b>{confidence}%</b>
-      </div>
-      <div className="meter"><i style={{ width: `${confidence}%` }} /></div>
-    </motion.div>
-  );
-}
-
 function MissionConsole({ mission, setMission, mode, setMode, sessions, loadSession, runMission, startDemo, running, onCompare }) {
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runMission();
+    }
+  };
+
   return (
-    <section className="mission-console panel">
+    <section className="panel mission-console">
       <div className="panel-title">
-        <div><Radar size={18} /> Mission Console</div>
-        <span>{mode}</span>
+        <div><Radar size={16} /> Command Interface</div>
+        <span>superhuman portal</span>
       </div>
-      <div className="mode-row">
+      
+      <label>What strategic problem are you trying to solve?</label>
+      
+      <div className="command-bar-wrapper">
+        <textarea 
+          value={mission} 
+          onChange={(event) => setMission(event.target.value)} 
+          onKeyDown={handleKeyDown}
+          placeholder="E.g., Design a scalable multi-agent SaaS platform..."
+          disabled={running}
+        />
+        <div className="command-shortcut">Ctrl + Enter</div>
+      </div>
+
+      <div className="compact-modes">
         {missionModes.map((item) => (
-          <button className={mode === item ? 'selected' : ''} key={item} onClick={() => setMode(item)}>
+          <button 
+            className={mode === item ? 'selected' : ''} 
+            key={item} 
+            onClick={() => setMode(item)}
+            disabled={running}
+          >
             {item}
           </button>
         ))}
       </div>
-      <textarea value={mission} onChange={(event) => setMission(event.target.value)} />
-      <div className="demo-row">
-        {demoMissions.map((item) => (
-          <button key={item} onClick={() => setMission(item)}>{item.replace('.', '')}</button>
-        ))}
+
+      <div className="chips-row">
+        <span>Presets</span>
+        <div className="chips-container">
+          {demoMissions.map((item) => (
+            <button 
+              key={item} 
+              onClick={() => setMission(item)}
+              disabled={running}
+              title={item}
+            >
+              {item.replace(/\.$/, '')}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="command-row">
-        <button className="primary" onClick={() => runMission()} disabled={running}>
-          {running ? <Pause size={18} /> : <Play size={18} />}
-          {running ? 'Mission Running' : 'Initiate Mission'}
+
+      <div className="command-actions">
+        <button className="primary-btn" onClick={() => runMission()} disabled={running || !mission.trim()}>
+          {running ? <Pause size={14} /> : <Play size={14} />}
+          {running ? 'Running...' : 'Initiate Operation'}
         </button>
-        <button className="secondary" onClick={startDemo} disabled={running}><Sparkles size={17} /> Demo Run</button>
-        <button className="secondary" onClick={onCompare}><GitBranch size={17} /> Compare Plans</button>
+        <button className="secondary-btn" onClick={startDemo} disabled={running}>
+          <Sparkles size={14} /> Demo Run
+        </button>
+        <button className="secondary-btn" onClick={onCompare}>
+          <GitBranch size={14} /> Compare Plans
+        </button>
       </div>
-      <div className="session-strip">
-        <span>Mission history</span>
-        <div>
-          {sessions.length ? sessions.slice(0, 3).map((session) => (
-            <button key={session.id} onClick={() => loadSession(session)}>
+
+      <div className="history-strip">
+        <label>History</label>
+        <div className="history-list">
+          {Array.isArray(sessions) && sessions.length ? sessions.slice(0, 3).map((session) => (
+            <button className="history-item" key={session.id} onClick={() => loadSession(session)}>
               {session.mode}: {session.mission}
             </button>
-          )) : <em>No saved missions yet</em>}
+          )) : <em style={{ fontSize: '10px', color: 'var(--text-muted)' }}>No prior operations logged.</em>}
         </div>
       </div>
     </section>
   );
 }
 
-function KnowledgeGraph({ mission, graphPulse, activeAgent }) {
-  const keywords = missionKeywords(mission);
-  
-  const categories = [
-    { id: 'researcher', label: 'Discovery', color: '#b6ff6a', defaultKeyword: 'Insights' },
-    { id: 'architect', label: 'Architecture', color: '#ffcc66', defaultKeyword: 'Blueprints' },
-    { id: 'strategist', label: 'Strategy', color: '#ff7ad9', defaultKeyword: 'Viability' },
-    { id: 'critic', label: 'Risk Analysis', color: '#ff5b6e', defaultKeyword: 'Mitigations' },
-    { id: 'memory', label: 'Context Fabric', color: '#9c8cff', defaultKeyword: 'State' }
-  ];
-
-  const getCategory = (word) => {
-    const lower = word.toLowerCase();
-    if (['market', 'launch', 'monetize', 'growth', 'business', 'model', 'product', 'startup', 'monetization', 'value', 'viability', 'strategy'].some(x => lower.includes(x))) {
-      return 'strategist';
-    }
-    if (['system', 'platform', 'architect', 'design', 'infra', 'data', 'software', 'app', 'engineering', 'blueprint', 'flows'].some(x => lower.includes(x))) {
-      return 'architect';
-    }
-    if (['risk', 'error', 'threat', 'vulnerability', 'attack', 'security', 'failure', 'objections', 'weakness', 'mitigation'].some(x => lower.includes(x))) {
-      return 'critic';
-    }
-    if (['memory', 'context', 'history', 'database', 'seed', 'archive', 'state', 'principle', 'preference'].some(x => lower.includes(x))) {
-      return 'memory';
-    }
-    return 'researcher';
+function CollaborativeReasoningFeed({ feed, running, activeAgent, onAgentClick }) {
+  const agentLogMap = {
+    orchestrator: { label: 'Orchestrator', text: 'Decomposing mission parameters and initializing mesh...' },
+    researcher: { label: 'Researcher', text: 'Scanning market signals and competitive vulnerabilities...' },
+    architect: { label: 'Architect', text: 'Modeling product blueprints, workflows, and supervision locks...' },
+    strategist: { label: 'Strategist', text: 'Formulating pricing, retention loops, and wedge GTM path...' },
+    critic: { label: 'Critic', text: 'Stress-testing assumptions and identifying operational risks...' },
+    memory: { label: 'Memory Fabric', text: 'Indexing strategic conclusions and updating durable memory...' }
   };
 
-  const keywordGroups = {
-    researcher: [],
-    architect: [],
-    strategist: [],
-    critic: [],
-    memory: []
-  };
-
-  keywords.forEach(word => {
-    const cat = getCategory(word);
-    if (keywordGroups[cat]) {
-      keywordGroups[cat].push(word.toUpperCase());
-    }
-  });
-
-  categories.forEach(cat => {
-    if (keywordGroups[cat.id].length === 0) {
-      keywordGroups[cat.id].push(cat.defaultKeyword.toUpperCase());
-    }
-  });
-
-  const rootPos = { x: 8, y: 50 };
-  const categoryPos = {
-    researcher: { x: 38, y: 15 },
-    architect: { x: 38, y: 32.5 },
-    strategist: { x: 38, y: 50 },
-    critic: { x: 38, y: 67.5 },
-    memory: { x: 38, y: 85 }
-  };
-
-  const leaves = [];
-  categories.forEach(cat => {
-    const groupWords = keywordGroups[cat.id];
-    const catY = categoryPos[cat.id].y;
-    const N = groupWords.length;
-    const spacing = 7;
-    
-    groupWords.forEach((word, index) => {
-      const leafY = catY + (index - (N - 1) / 2) * spacing;
-      leaves.push({
-        word,
-        parentId: cat.id,
-        parentColor: cat.color,
-        x: 76,
-        y: leafY
-      });
-    });
-  });
-
-  const isAgentActive = (id) => activeAgent === id;
+  const order = ['orchestrator', 'researcher', 'architect', 'strategist', 'critic', 'memory'];
+  const activeIndex = order.indexOf(activeAgent);
 
   return (
-    <section className="graph-panel panel">
+    <section className="panel reasoning-feed-panel">
       <div className="panel-title">
-        <div><Network size={18} /> Dynamic Knowledge Graph</div>
-        <span>live hierarchy mapping</span>
+        <div><Activity size={16} /> Collaborative Reasoning Feed</div>
+        <span>{running ? 'thinking' : 'idle'}</span>
       </div>
-      <div className="graph-space">
-        <svg className="graph-lines" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {categories.map(cat => {
-            const active = isAgentActive(cat.id) || activeAgent === 'orchestrator';
-            return (
-              <line
-                key={`root-to-${cat.id}`}
-                x1={rootPos.x}
-                y1={rootPos.y}
-                x2={categoryPos[cat.id].x}
-                y2={categoryPos[cat.id].y}
-                style={{
-                  stroke: active ? cat.color : 'rgba(125, 249, 255, 0.08)',
-                  strokeWidth: active ? 0.6 : 0.2,
-                  transition: 'all 0.5s ease'
-                }}
-                className={active ? 'graph-line-active' : ''}
-              />
-            );
-          })}
+      <div className="reasoning-list">
+        {order.map((agentKey, idx) => {
+          const isStarted = running ? idx <= activeIndex : activeIndex >= 0;
+          if (!isStarted) return null;
 
-          {leaves.map((leaf, index) => {
-            const active = isAgentActive(leaf.parentId) || activeAgent === 'orchestrator';
-            const catPos = categoryPos[leaf.parentId];
-            return (
-              <line
-                key={`cat-to-leaf-${index}`}
-                x1={catPos.x}
-                y1={catPos.y}
-                x2={leaf.x}
-                y2={leaf.y}
-                style={{
-                  stroke: active ? leaf.parentColor : 'rgba(125, 249, 255, 0.08)',
-                  strokeWidth: active ? 0.4 : 0.15,
-                  transition: 'all 0.5s ease'
-                }}
-                className={active ? 'graph-line-active' : ''}
-              />
-            );
-          })}
-        </svg>
+          const config = agentLogMap[agentKey];
+          const isActive = activeAgent === agentKey && running;
+          const actualFeedItem = feed.find(item => item.agent === agentKey);
+          const text = actualFeedItem ? actualFeedItem.text : config.text;
 
-        <motion.div
-          className="graph-node core"
-          style={{ left: `${rootPos.x}%`, top: `${rootPos.y}%` }}
-          animate={{
-            scale: activeAgent === 'orchestrator' ? [1, 1.08, 1] : [1, 1.02, 1],
-            boxShadow: activeAgent === 'orchestrator' 
-              ? '0 0 30px rgba(125, 249, 255, 0.6)' 
-              : '0 0 15px rgba(125, 249, 255, 0.2)'
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          NEXUS
-        </motion.div>
-
-        {categories.map(cat => {
-          const active = isAgentActive(cat.id);
-          const pos = categoryPos[cat.id];
           return (
-            <motion.div
-              key={cat.id}
-              className={`graph-node category-node ${active ? 'active' : ''}`}
-              style={{
-                left: `${pos.x}%`,
-                top: `${pos.y}%`,
-                border: `1px solid ${active ? cat.color : 'rgba(255, 255, 255, 0.15)'}`,
-                color: active ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                textShadow: active ? `0 0 8px ${cat.color}` : 'none',
-                boxShadow: active ? `0 0 15px ${cat.color}33` : 'none',
-                zIndex: active ? 10 : 2
-              }}
-              animate={active ? { scale: 1.05 } : { scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            <div 
+              className={`reasoning-item ${isActive ? 'active' : ''}`} 
+              key={agentKey}
+              onClick={() => onAgentClick(agentKey)}
+              style={{ cursor: 'pointer' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span 
-                  style={{ 
-                    width: '6px', 
-                    height: '6px', 
-                    borderRadius: '50%', 
-                    backgroundColor: cat.color,
-                    boxShadow: `0 0 6px ${cat.color}`,
-                    display: 'inline-block'
-                  }} 
-                />
-                {cat.label}
+              <div className="reasoning-header">
+                <span className="reasoning-dot" />
+                <span className="reasoning-agent" style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {config.label}
+                </span>
               </div>
-            </motion.div>
-          );
-        })}
-
-        {leaves.map((leaf, index) => {
-          const active = isAgentActive(leaf.parentId);
-          return (
-            <motion.div
-              key={`leaf-${index}`}
-              className={`graph-node leaf-node ${active ? 'active' : ''}`}
-              style={{
-                left: `${leaf.x}%`,
-                top: `${leaf.y}%`,
-                border: `1px solid ${active ? leaf.parentColor + '88' : 'rgba(255, 255, 255, 0.08)'}`,
-                color: active ? '#ffffff' : 'rgba(255, 255, 255, 0.4)',
-                backgroundColor: 'rgba(2, 12, 23, 0.9)',
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                padding: '4px 8px',
-                minHeight: 'auto',
-                boxShadow: active ? `0 0 8px ${leaf.parentColor}22` : 'none',
-                zIndex: active ? 9 : 1
-              }}
-              animate={active ? { scale: 1.02 } : { scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            >
-              {leaf.word}
-            </motion.div>
+              <p className="reasoning-text">{text}</p>
+            </div>
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function StrategicCanvas({ activeAgent, running }) {
+  const stages = [
+    { key: 'orchestrator', label: 'MISSION' },
+    { key: 'researcher', label: 'RESEARCH' },
+    { key: 'architect', label: 'ARCHITECTURE' },
+    { key: 'strategist', label: 'STRATEGY' },
+    { key: 'critic', label: 'CRITIQUE' },
+    { key: 'memory', label: 'DECISION' }
+  ];
+
+  const activeIndex = stages.findIndex(s => s.key === activeAgent);
+  
+  return (
+    <section className="canvas-bar">
+      {stages.map((stage, idx) => {
+        const isActive = activeAgent === stage.key && running;
+        const isCompleted = idx < activeIndex || (!running && activeIndex >= 0);
+        return (
+          <React.Fragment key={stage.key}>
+            <div className={`canvas-node ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+              <span className="canvas-indicator" />
+              <span>{stage.label}</span>
+            </div>
+            {idx < stages.length - 1 && <span className="canvas-arrow">→</span>}
+          </React.Fragment>
+        );
+      })}
     </section>
   );
 }
@@ -886,10 +837,10 @@ function DebatePanel({ running, debate }) {
   ];
 
   return (
-    <div className="debate-feed-wrapper" style={{ overflowY: 'auto', height: '100%' }}>
+    <div className="debate-feed" style={{ overflowY: 'auto', height: '100%' }}>
       {lines.slice(0, 3).map((line, index) => (
-        <div className={line.agent === 'Critic' ? 'debate-line critic' : 'debate-line strategist'} key={`${line.agent}-${index}`}>
-          <b>{line.agent}</b>
+        <div className={line.agent === 'Critic' ? 'debate-bubble critic' : 'debate-bubble strategist'} key={`${line.agent}-${index}`}>
+          <strong>{line.agent}</strong>
           <p>{line.text}</p>
         </div>
       ))}
@@ -899,10 +850,10 @@ function DebatePanel({ running, debate }) {
 
 function MemoryPanel({ memory }) {
   return (
-    <div className="memory-feed-wrapper" style={{ overflowY: 'auto', height: '100%' }}>
+    <div className="memory-feed" style={{ overflowY: 'auto', height: '100%' }}>
       {memory.map((item, index) => (
-        <div className="memory-item" key={`${item}-${index}`}>
-          <Eye size={15} />
+        <div className="memory-item" key={`${item}-${index}`} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <Eye size={13} style={{ flexShrink: 0, color: 'var(--accent)' }} />
           <span>{item}</span>
         </div>
       ))}
@@ -915,20 +866,20 @@ function RightPanel({ engine }) {
   return (
     <section className="right-panel panel">
       <div className="panel-tabs">
-        <button className={activeTab === 'feed' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('feed')}>
+        <button className={activeTab === 'feed' ? 'active' : ''} onClick={() => setActiveTab('feed')}>
           <Terminal size={14} /> Feed
         </button>
-        <button className={activeTab === 'debate' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('debate')}>
+        <button className={activeTab === 'debate' ? 'active' : ''} onClick={() => setActiveTab('debate')}>
           <ShieldAlert size={14} /> Debate
         </button>
-        <button className={activeTab === 'memory' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('memory')}>
+        <button className={activeTab === 'memory' ? 'active' : ''} onClick={() => setActiveTab('memory')}>
           <DatabaseZap size={14} /> Memory
         </button>
-        <button className={activeTab === 'timeline' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('timeline')}>
+        <button className={activeTab === 'timeline' ? 'active' : ''} onClick={() => setActiveTab('timeline')}>
           <Orbit size={14} /> Timeline
         </button>
       </div>
-      <div className="tab-content" style={{ flex: 1, minHeight: 0 }}>
+      <div className="tab-content" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {activeTab === 'feed' && <LiveTerminal feed={engine.feed} />}
         {activeTab === 'debate' && <DebatePanel running={engine.running} debate={engine.debate} />}
         {activeTab === 'memory' && <MemoryPanel memory={engine.memory} />}
@@ -938,32 +889,15 @@ function RightPanel({ engine }) {
   );
 }
 
-function MissionOutput({ report, mission, mode, runMission, running }) {
+function MissionOutput({ report, mission, mode, runMission, running, decisionStatus, acceptDecision, challengeDecision, memory }) {
   const [refinementText, setRefinementText] = useState('');
+  const [checkedTasks, setCheckedTasks] = useState({});
 
-  const exportReport = () => {
-    if (!report) return;
-    let md = `# NEXUS Strategic Directive\n\n`;
-    md += `**Mission:** ${mission}\n`;
-    md += `**Mode:** ${mode}\n`;
-    md += `**Confidence Score:** ${report.confidence}%\n\n`;
-    md += `## Sections\n\n`;
-    report.sections.forEach(sec => {
-      md += `### ${sec.label} (Risk: ${sec.risk})\n`;
-      md += `${sec.text}\n\n`;
-      if (sec.recommendation) {
-        md += `*Recommendation:* ${sec.recommendation}\n\n`;
-      }
-    });
-    md += `\n---\n*Generated by NEXUS AI-native Strategic Workflow Platform*\n`;
-
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `NEXUS-Directive-${mode.replace(/\s+/g, '-')}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const toggleTask = (idx) => {
+    setCheckedTasks(current => ({
+      ...current,
+      [idx]: !current[idx]
+    }));
   };
 
   const handleRefineSubmit = () => {
@@ -972,104 +906,173 @@ function MissionOutput({ report, mission, mode, runMission, running }) {
     setRefinementText('');
   };
 
+  const exportReport = () => {
+    if (!report) return;
+    let md = `# NEXUS Strategic Directive\n\n`;
+    md += `**Mission:** ${mission}\n`;
+    md += `**Mode:** ${mode}\n`;
+    md += `**Recommended Decision:** ${report.decision}\n`;
+    md += `**Confidence Score:** ${report.confidence}%\n\n`;
+    md += `## Directive\n\n`;
+    report.sections.forEach(sec => {
+      md += `### ${sec.label}\n`;
+      md += `${sec.text}\n\n`;
+    });
+    md += `## Next Actions\n\n`;
+    report.tasks.forEach((task, idx) => {
+      const isChecked = checkedTasks[idx] ? '[x]' : '[ ]';
+      md += `${isChecked} ${task}\n`;
+    });
+    md += `\n---\n*Generated by NEXUS AI-native Strategic Workflow Platform*\n`;
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NEXUS-Strategic-Directive.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!report) {
+    return (
+      <section className="output-workspace panel">
+        <div className="panel-title">
+          <div><Sparkles size={16} /> Strategic Directive</div>
+          <span>Awaiting Intake</span>
+        </div>
+        <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+          {running ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div className="blinking-log" style={{ fontFamily: 'monospace' }}>COMPILING STRATEGIC DIRECTIVE...</div>
+              <div style={{ width: '120px', height: '2px', background: 'var(--border)', position: 'relative', overflow: 'hidden' }}>
+                <motion.div 
+                  style={{ height: '100%', background: 'var(--accent)', width: '30%' }} 
+                  animate={{ x: [-40, 120] }} 
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                />
+              </div>
+            </div>
+          ) : (
+            'Initiate mission parameters to compile McKinsey Strategic Brief.'
+          )}
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="output panel">
-      <div className="panel-title">
-        <div><Sparkles size={18} /> Unified Output</div>
-        <span>{report ? `${report.confidence}% confidence` : 'assembling'}</span>
-      </div>
-      {report ? (
-        <div className="output-body">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>{report.title}</h2>
-            <button className="secondary" onClick={exportReport} style={{ height: '34px', fontSize: '12px' }}>
-              <Zap size={14} /> Export Report (.md)
+    <section className="output-workspace">
+      <div className="sheet">
+        <div className="sheet-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <h2 className="sheet-title">NEXUS Strategic Directive</h2>
+            <button className="secondary-btn" onClick={exportReport} style={{ height: '26px', fontSize: '10px' }}>
+              <Zap size={12} /> Export Directive (.md)
             </button>
           </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '10px', color: 'rgba(125, 249, 255, 0.65)', fontFamily: 'monospace' }}>
-            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>MISSION SECURE ID: NXS-8942-A</span>
-            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>LATENCY: 1.42s</span>
-            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>MESH: 6 ACTIVE</span>
-            <span style={{ background: 'rgba(255,255,255,0.03)', padding: '4px 8px', border: '1px solid rgba(255,255,255,0.05)' }}>SEED: 0x9f32e</span>
-          </div>
-
-          <div className="confidence-breakdown">
-            <div className="breakdown-bar">
-              <span>Desirability (Researcher)</span>
-              <div className="meter-bg">
-                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '88%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.1 }} style={{ backgroundColor: '#b6ff6a' }} />
-              </div>
-              <span>88%</span>
-            </div>
-            <div className="breakdown-bar">
-              <span>Feasibility (Architect)</span>
-              <div className="meter-bg">
-                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '86%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.2 }} style={{ backgroundColor: '#7df9ff' }} />
-              </div>
-              <span>86%</span>
-            </div>
-            <div className="breakdown-bar">
-              <span>Viability (Strategist)</span>
-              <div className="meter-bg">
-                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '87%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.3 }} style={{ backgroundColor: '#ff7ad9' }} />
-              </div>
-              <span>87%</span>
-            </div>
-            <div className="breakdown-bar">
-              <span>Resilience (Critic)</span>
-              <div className="meter-bg">
-                <motion.div className="meter-fill" initial={{ width: 0 }} animate={{ width: '91%' }} transition={{ type: 'spring', stiffness: 80, damping: 12, delay: 0.4 }} style={{ backgroundColor: '#ff5b6e' }} />
-              </div>
-              <span>91%</span>
-            </div>
-          </div>
-
-          <motion.div 
-            className="report-grid"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {report.sections.map((section, idx) => (
-              <motion.article 
-                key={section.label}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
-              >
-                <div className="report-head">
-                  <strong>{section.label}</strong>
-                  {section.risk && <span className={`risk ${section.risk.toLowerCase()}`}>Risk {section.risk}</span>}
-                </div>
-                <p>{section.text}</p>
-                {section.recommendation && <small>{section.recommendation}</small>}
-              </motion.article>
-            ))}
-          </motion.div>
-
-          <div className="refinement-area">
-            <label>Adversarial Feedback Loop (Refine Directive)</label>
-            <div className="refinement-input-row">
-              <textarea 
-                value={refinementText} 
-                onChange={(e) => setRefinementText(e.target.value)} 
-                placeholder="Enter criticism or instruction to refine this plan (e.g. 'focus more on regulatory constraints')"
-                disabled={running}
-              />
-              <button className="primary" onClick={handleRefineSubmit} disabled={running || !refinementText.trim()}>
-                Refine Plan
-              </button>
-            </div>
+          <div className="sheet-metadata">
+            <div>SECURE ID: NXS-8942-A</div>
+            <div>LATENCY: 1.42s</div>
+            <div>SEED: 0x9f32e</div>
+            <div>OPERATIONAL CONFIDENCE: {report.confidence}%</div>
           </div>
         </div>
-      ) : (
-        <div className="skeleton-stack">
-          <i />
-          <i />
-          <i />
+
+        {/* Recommended Decision Block with Lock Buttons */}
+        <div className={`decision-banner ${decisionStatus}`}>
+          <div className="decision-title-row">
+            <span className="decision-label">RECOMMENDED DECISION</span>
+            <span className="decision-confidence">Confidence: {report.confidence}%</span>
+          </div>
+          <p className="decision-text">{report.decision}</p>
+          <p className="decision-rationale"><strong>Rationale:</strong> {report.rationale}</p>
+          
+          {decisionStatus === 'pending' ? (
+            <div className="decision-actions">
+              <button className="btn-accept" onClick={acceptDecision}>Accept Decision</button>
+              <button className="btn-challenge" onClick={challengeDecision}>Challenge Decision</button>
+            </div>
+          ) : (
+            <span className={`decision-status-tag ${decisionStatus}`}>
+              Decision {decisionStatus}
+            </span>
+          )}
         </div>
-      )}
+
+        {/* Document Body */}
+        <div className="document-body">
+          {report.sections.map((section, idx) => {
+            const memoryIndex = idx;
+            const hasMemory = memory[memoryIndex];
+            return (
+              <div className="doc-section" key={section.label}>
+                <h3>{section.label}</h3>
+                <p>
+                  {section.text}
+                  {hasMemory && (
+                    <span className="citation">
+                      {memoryIndex + 1}
+                      <span className="citation-tooltip">
+                        <strong>Recalled Principle:</strong> {memory[memoryIndex]}
+                      </span>
+                    </span>
+                  )}
+                </p>
+              </div>
+            );
+          })}
+
+          {/* Next Actions Interactive Checklist */}
+          {report.tasks && report.tasks.length > 0 && (
+            <div className="doc-section">
+              <h3>Next Actions</h3>
+              <div className="task-list">
+                {report.tasks.map((task, idx) => {
+                  const isChecked = !!checkedTasks[idx];
+                  return (
+                    <div 
+                      className={`task-item ${isChecked ? 'checked' : ''}`} 
+                      key={idx}
+                      onClick={() => toggleTask(idx)}
+                    >
+                      <div className={`task-checkbox ${isChecked ? 'checked' : ''}`}>
+                        {isChecked && <Zap size={10} />}
+                      </div>
+                      <span>{task}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Refinement input */}
+        <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input 
+              type="text" 
+              value={refinementText} 
+              onChange={e => setRefinementText(e.target.value)}
+              placeholder="Inject strategic constraint or vector refinement..." 
+              style={{
+                flex: 1,
+                border: '1px solid var(--border)',
+                background: 'rgba(255,255,255,0.02)',
+                borderRadius: '4px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#ffffff'
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleRefineSubmit()}
+            />
+            <button className="secondary-btn" onClick={handleRefineSubmit} style={{ height: '34px' }}>
+              Refine Plan
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -1113,6 +1116,9 @@ function ComparisonModal({ sessions, onClose }) {
   const leftSession = sessions[leftIndex];
   const rightSession = sessions[rightIndex];
 
+  const leftSections = leftSession?.report?.sections || [];
+  const rightSections = rightSession?.report?.sections || [];
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content wide" onClick={e => e.stopPropagation()}>
@@ -1151,21 +1157,21 @@ function ComparisonModal({ sessions, onClose }) {
             <tbody>
               <tr>
                 <td><strong>Mission</strong></td>
-                <td>{leftSession.mission}</td>
-                <td>{rightSession.mission}</td>
+                <td>{leftSession?.mission}</td>
+                <td>{rightSession?.mission}</td>
               </tr>
               <tr>
                 <td><strong>Mode</strong></td>
-                <td>{leftSession.mode}</td>
-                <td>{rightSession.mode}</td>
+                <td>{leftSession?.mode}</td>
+                <td>{rightSession?.mode}</td>
               </tr>
               <tr>
                 <td><strong>Confidence</strong></td>
-                <td><span className="conf-value">{leftSession.report?.confidence || 90}%</span></td>
-                <td><span className="conf-value">{rightSession.report?.confidence || 90}%</span></td>
+                <td><span className="conf-value">{leftSession?.report?.confidence || 90}%</span></td>
+                <td><span className="conf-value">{rightSession?.report?.confidence || 90}%</span></td>
               </tr>
-              {leftSession.report?.sections.map((sec, idx) => {
-                const rightSec = rightSession.report?.sections[idx] || {};
+              {leftSections.map((sec, idx) => {
+                const rightSec = rightSections[idx] || {};
                 return (
                   <tr key={sec.label}>
                     <td><strong>{sec.label}</strong></td>
@@ -1321,26 +1327,28 @@ function App() {
       <section className="workspace">
         <div className="left-column">
           <MissionConsole {...engine} onCompare={() => setCompareOpen(true)} />
-          <div className="agent-grid">
-            {agents.map((agent) => (
-              <div key={agent.id} onClick={() => setTraceAgent(agent)}>
-                <AgentCard
-                  agent={agent}
-                  running={engine.running}
-                  active={engine.activeAgent === agent.id}
-                />
-              </div>
-            ))}
-          </div>
+          <CollaborativeReasoningFeed 
+            feed={engine.feed} 
+            running={engine.running} 
+            activeAgent={engine.activeAgent} 
+            onAgentClick={(agentId) => {
+              const agentObj = agents.find(a => a.id === agentId);
+              if (agentObj) setTraceAgent(agentObj);
+            }}
+          />
         </div>
         <div className="center-column">
-          <KnowledgeGraph {...engine} />
+          <StrategicCanvas activeAgent={engine.activeAgent} running={engine.running} />
           <MissionOutput 
             report={engine.report} 
             mission={engine.mission} 
             mode={engine.mode} 
             runMission={engine.runMission} 
-            running={engine.running} 
+            running={engine.running}
+            decisionStatus={engine.decisionStatus}
+            acceptDecision={engine.acceptDecision}
+            challengeDecision={engine.challengeDecision}
+            memory={engine.memory}
           />
         </div>
         <div className="right-column">
