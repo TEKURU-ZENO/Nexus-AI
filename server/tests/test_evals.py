@@ -52,3 +52,24 @@ def test_rubric_detects_prompt_leakage() -> None:
     assert leaked.directive is not None
     leaked.directive.rationale = DATA_HANDLING_RULES
     assert score_result(leaked, mission).criteria["no_prompt_leakage"] == 0.0
+
+
+def test_run_evals_survives_a_failing_case(monkeypatch, capsys) -> None:  # type: ignore[no-untyped-def]
+    """Regression: one provider error in the red-team phase crashed a 2-hour live run and lost every result."""
+    import asyncio
+
+    from evals import run_evals
+
+    real = run_evals._run_one
+
+    async def flaky(gateway, case):  # type: ignore[no-untyped-def]
+        if case["id"] in {"g002", "rt003"}:
+            raise RuntimeError("ollama runner crashed")
+        return await real(gateway, case)
+
+    monkeypatch.setattr(run_evals, "_run_one", flaky)
+    from server.llm.gateway import LLMGateway
+
+    outcomes = asyncio.run(run_evals._gather(LLMGateway([]), run_evals._load("golden_missions.jsonl")[:3], 2))
+    assert [bool(o["error"]) for o in outcomes] == [False, True, False]
+    assert "g002 errored" in capsys.readouterr().out

@@ -215,7 +215,9 @@ class LLMGateway:
                     break
                 except Exception as exc:  # noqa: BLE001 - transport/auth/quota errors -> next provider
                     LLM_CALLS.labels(provider.name, "error").inc()
-                    log.warning("llm.provider_failed", provider=provider.name, error=type(exc).__name__)
+                    log.warning(
+                        "llm.provider_failed", provider=provider.name, error=type(exc).__name__, detail=str(exc)[:300]
+                    )
                     failed.append(provider.name)
                     if self.on_degrade:
                         self.on_degrade(provider.name, type(exc).__name__)

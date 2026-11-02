@@ -63,12 +63,19 @@ async def _run_one(gateway: LLMGateway, case: dict[str, Any]) -> dict[str, Any]:
         confidence=final.get("confidence"),
         safety_flags=final.get("safety_flags", []),
     )
-    judged = await judge(gateway, case["mission"], result) if not gateway.simulator_only else None
+    judged, judge_error = None, None
+    if not gateway.simulator_only:
+        try:
+            judged = await judge(gateway, case["mission"], result)
+        except Exception as exc:  # noqa: BLE001 - a judge failure must not discard the generated result
+            judge_error = f"{type(exc).__name__}: {str(exc)[:200]}"
     return {
         "case": case,
         "result": result,
         "blocked": bool(final.get("blocked")),
         "judge": judged.model_dump() if judged else None,
+        "judge_error": judge_error,
+        "error": None,
         "seconds": time.perf_counter() - started,
         "tokens": deps.budget.used,
         "cost_usd": deps.budget.cost_usd,
@@ -80,7 +87,21 @@ async def _gather(gateway: LLMGateway, cases: list[dict[str, Any]], concurrency:
 
     async def guarded(c: dict[str, Any]) -> dict[str, Any]:
         async with sem:
-            return await _run_one(gateway, c)
+            try:
+                return await _run_one(gateway, c)
+            except Exception as exc:  # noqa: BLE001 - one failed case must not discard the others
+                print(f"  case {c['id']} errored: {type(exc).__name__}: {str(exc)[:200]}", flush=True)
+                return {
+                    "case": c,
+                    "result": RunResult(),
+                    "blocked": False,
+                    "judge": None,
+                    "judge_error": None,
+                    "error": f"{type(exc).__name__}: {str(exc)[:300]}",
+                    "seconds": 0.0,
+                    "tokens": 0,
+                    "cost_usd": 0.0,
+                }
 
     return await asyncio.gather(*(guarded(c) for c in cases))
 
@@ -89,6 +110,8 @@ def _redteam(outcomes: list[dict[str, Any]]) -> list[str]:
     failures = []
     for o in outcomes:
         c = o["case"]
+        if o.get("error"):
+            continue  # infrastructure errors are reported separately, not as safety failures
         if "expect_flag" in c and c["expect_flag"] not in o["result"].safety_flags:
             failures.append(f"{c['id']}: expected flag {c['expect_flag']}, got {o['result'].safety_flags}")
         if "expect_blocked" in c and c["expect_blocked"] != o["blocked"]:
@@ -116,6 +139,13 @@ def main() -> int:
     outcomes = asyncio.run(_gather(gateway, golden, args.concurrency))
     rt_outcomes = asyncio.run(_gather(gateway, _load("redteam.jsonl"), args.concurrency))
 
+    errors = [f"{o['case']['id']}: {o['error']}" for o in outcomes + rt_outcomes if o.get("error")]
+    outcomes = [o for o in outcomes if not o.get("error")]
+    if not outcomes:
+        print(f"[evals:{mode}] every golden case errored:")
+        for e in errors:
+            print(f"    {e}")
+        return 1
     per_case, crit = [], {k: [] for k in WEIGHTS}
     for o in outcomes:
         sc = score_result(o["result"], o["case"]["mission"], o["case"].get("refinement"))
@@ -152,6 +182,7 @@ def main() -> int:
     report = {
         "summary": summary,
         "redteam_failures": rt_failures,
+        "errors": errors,
         "cases": per_case,
         "meta": {"generator": [f"{p.name}:{p.model}" for p in gateway.providers] or ["simulator"]},
     }
@@ -167,7 +198,12 @@ def main() -> int:
     )
     for k, v in summary["criteria"].items():
         print(f"  {k:<22} {v:.3f}")
-    print(f"  red-team: {len(rt_outcomes) - len(rt_failures)}/{len(rt_outcomes)} passed")
+    rt_errored = sum(1 for o in rt_outcomes if o.get("error"))
+    print(
+        f"  red-team: {len(rt_outcomes) - len(rt_failures) - rt_errored}/{len(rt_outcomes)} passed ({rt_errored} errored)"
+    )
+    for e in errors:
+        print(f"    ERROR {e}")
     for f in rt_failures:
         print(f"    FAIL {f}")
 
