@@ -122,3 +122,11 @@ def test_agents_endpoint_is_single_source_of_truth(client: TestClient) -> None:
 def test_calibration_report_shape(client: TestClient) -> None:
     body = client.get("/api/v1/calibration").json()
     assert len(body["buckets"]) == 5 and body["decided_runs"] == 0
+
+
+def test_event_log_json_matches_stream(client: TestClient) -> None:
+    run = _create(client)
+    streamed = read_sse(client, run["id"])
+    log = client.get(f"/api/v1/runs/{run['id']}/events/log").json()
+    assert [e["seq"] for e in log] == [e["seq"] for e in streamed]
+    assert client.get(f"/api/v1/runs/{run['id']}/events/log?after=5").json()[0]["seq"] == 6

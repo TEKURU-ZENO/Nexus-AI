@@ -1,0 +1,10 @@
+dist
+node_modules
+package-lock.json
+openapi.json
+server
+evals
+docs
+assets
+*.md
+src/styles.css

@@ -98,3 +98,14 @@ def test_blank_env_values_fall_back_to_defaults(tmp_path: Path) -> None:
     assert s.openai_api_key is None
     assert s.auth_mode is AuthMode.DEV
     assert s.llm_providers == ["openai", "anthropic"]
+
+
+def test_concurrent_first_requests_provision_once(tmp_path: Path) -> None:
+    """Regression: parallel first requests from a new org raced on INSERT and returned 500."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    s = _jwt_settings(tmp_path)
+    headers = _auth(s, "newuser", "neworg", ["editor"])
+    with make_client(s) as c, ThreadPoolExecutor(8) as pool:
+        codes = list(pool.map(lambda _: c.get("/api/v1/runs", headers=headers).status_code, range(16)))
+    assert codes == [200] * 16

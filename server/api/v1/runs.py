@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from server.api.deps import ContainerDep, PrincipalDep, SessionDep
 from server.core.security import Permission, Principal
-from server.db.models import Run
+from server.db.models import Run, RunEventRow
 from server.schemas.api import (
     DecisionRequest,
     DecisionResponse,
@@ -19,6 +19,7 @@ from server.schemas.api import (
     MissionMode,
     RunCreate,
     RunDetail,
+    RunEvent,
     RunResult,
     RunStatus,
     RunSummary,
@@ -123,6 +124,28 @@ async def stream_events(
     return StreamingResponse(
         gen(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"}
     )
+
+
+@router.get("/{run_id}/events/log", response_model=list[RunEvent])
+async def event_log(
+    run_id: str,
+    principal: PrincipalDep,
+    session: SessionDep,
+    after: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 500,
+) -> list[RunEvent]:
+    """The persisted event log as JSON (replay, audit, and clients that cannot use SSE)."""
+    principal.require(Permission.RUN_READ)
+    await _get_run(session, principal, run_id)
+    rows = (
+        await session.scalars(
+            select(RunEventRow)
+            .where(RunEventRow.run_id == run_id, RunEventRow.seq > after)
+            .order_by(RunEventRow.seq)
+            .limit(limit)
+        )
+    ).all()
+    return [RunEvent(seq=r.seq, type=r.type, agent=r.agent, message=r.message, data=r.data, at=r.at) for r in rows]
 
 
 @router.post("/{run_id}/cancel", response_model=RunSummary)
