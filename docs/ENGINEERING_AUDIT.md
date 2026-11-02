@@ -1,7 +1,9 @@
 # NEXUS — Senior AI Engineering Audit
 
 **Date:** 2026-11-02 · **Scope:** full repository at `01ad89c` (FastAPI backend, React/Vite frontend, Vercel config, docs)
-**Verdict:** A strong *hackathon demo* with good product instincts, but **not yet a real multi-agent system**. Several of its core claims (live mode, memory, confidence, synthesis) are partly or entirely simulated. Getting to corporate standard means rebuilding the core engine, adding a real data layer and identity, and putting testing, evals, security and observability in place, in that order.
+**Status (2026-11-02):** Phases 0–3 are implemented and most of Phases 4–5 are done. See [§8 Implementation status](#8-implementation-status). `[x]` = done, `[~]` = partially done.
+
+**Original verdict:** A strong *hackathon demo* with good product instincts, but **not yet a real multi-agent system**. Several of its core claims (live mode, memory, confidence, synthesis) are partly or entirely simulated. Getting to corporate standard means rebuilding the core engine, adding a real data layer and identity, and putting testing, evals, security and observability in place, in that order.
 
 ---
 
@@ -124,52 +126,52 @@ Key design rules:
 ## 5. Elevation roadmap
 
 ### Phase 0: Stop the bleeding (week 1)
-- [ ] Fix B1: serve health at `/api/health` (and keep `/health`).
-- [ ] Fix B4: use `loop.call_soon_threadsafe` or the **`AsyncOpenAI`** client natively; keep task references and cancel on client disconnect (`request.is_disconnected()`).
-- [ ] Fix B5/B6/B7: stop keyword overrides in the UI and stop hard-coded confidence; label sections by agent until real synthesis exists.
-- [ ] Fix B2/B3: make simulation mission-aware or clearly labelled "sample", and **never** write fallback output to memory.
-- [ ] Fix B8/B10: `AbortController`, a single run ID, no blind timeouts, guarded JSON parsing.
-- [ ] Validate input: `mission` 10–4,000 chars, `mode` as an `Enum`, `refinement: str | None` with a length cap.
-- [ ] Pin every dependency (`package-lock` already exists; replace `"latest"` with exact versions, move Vite and plugins to `devDependencies`). Use `uv`/`pip-tools` lockfile for Python.
+- [x] Fix B1: serve health at `/api/health` (and keep `/health`).
+- [x] Fix B4: use `loop.call_soon_threadsafe` or the **`AsyncOpenAI`** client natively; keep task references and cancel on client disconnect (`request.is_disconnected()`).
+- [x] Fix B5/B6/B7: stop keyword overrides in the UI and stop hard-coded confidence; label sections by agent until real synthesis exists.
+- [x] Fix B2/B3: make simulation mission-aware or clearly labelled "sample", and **never** write fallback output to memory.
+- [x] Fix B8/B10: `AbortController`, a single run ID, no blind timeouts, guarded JSON parsing.
+- [x] Validate input: `mission` 10–4,000 chars, `mode` as an `Enum`, `refinement: str | None` with a length cap.
+- [x] Pin every dependency (`package-lock` already exists; replace `"latest"` with exact versions, move Vite and plugins to `devDependencies`). Use `uv`/`pip-tools` lockfile for Python.
 
 ### Phase 1: Engineering foundation (weeks 2–4)
-- [ ] Monorepo layout: `apps/web`, `apps/api`, `packages/contracts`.
-- [ ] Migrate the frontend to **TypeScript**; split `main.jsx` into feature modules (`landing/`, `console/`, `report/`, `graph/`), and put state in zustand stores.
-- [ ] Tooling: ruff + mypy (strict) + pytest; ESLint + Prettier + Vitest + Playwright; pre-commit hooks.
-- [ ] CI (GitHub Actions): lint → typecheck → unit → build → e2e smoke → dependency and secret scanning (Dependabot, CodeQL, gitleaks). Protected `main`, required reviews, conventional commits, CODEOWNERS.
-- [ ] 12-factor config via `pydantic-settings`; one `Settings` object.
-- [ ] Docker + docker-compose for local parity (api, web, postgres, redis).
+- [~] Monorepo layout: `apps/web`, `apps/api`, `packages/contracts`.
+- [x] Migrate the frontend to **TypeScript**; split `main.jsx` into feature modules (`landing/`, `console/`, `report/`, `graph/`), and put state in zustand stores.
+- [x] Tooling: ruff + mypy (strict) + pytest; ESLint + Prettier + Vitest + Playwright; pre-commit hooks.
+- [x] CI (GitHub Actions): lint → typecheck → unit → build → e2e smoke → dependency and secret scanning (Dependabot, CodeQL, gitleaks). Protected `main`, required reviews, conventional commits, CODEOWNERS.
+- [x] 12-factor config via `pydantic-settings`; one `Settings` object.
+- [x] Docker + docker-compose for local parity (api, web, postgres, redis).
 
 ### Phase 2: Real AI engine (weeks 4–8)
-- [ ] **LLM gateway** abstraction (OpenAI, Anthropic Claude and others) with retries, exponential backoff, timeouts, model fallback, response caching and per-run token or cost budgets.
-- [ ] **Structured outputs**: every agent returns a Pydantic schema (`Finding{claim, evidence[], risk, confidence}`); invalid outputs trigger a repair retry.
-- [ ] **Planner-driven DAG**: the Orchestrator emits a plan; independent agents run **in parallel** (`asyncio.TaskGroup`); the Critic → Rebuttal → Judge debate runs for N rounds or until convergence.
-- [ ] **Grounding and tools**: web search with citations, document upload, RAG over customer docs (pgvector), and a calculator for market sizing. Claims without evidence are flagged as unsupported in the UI.
-- [ ] **Real synthesis**: a Synthesizer agent produces the `Directive` (decision, rationale, tradeoffs, phased plan, KPIs, risks with owners) from all findings and the debate transcript.
-- [ ] **Memory v2**: per-tenant and per-project scoped, embedding-based retrieval with a relevance threshold, user-visible and deletable. Only *accepted* decisions are committed.
-- [ ] **Prompt versioning**: prompts are files with version IDs, and each run records which versions it used.
-- [ ] **Prompt-injection defenses**: delimit untrusted input, add an instruction hierarchy, sanitize what's stored in memory, and restrict tool permissions.
+- [x] **LLM gateway** abstraction (OpenAI, Anthropic Claude and others) with retries, exponential backoff, timeouts, model fallback, response caching and per-run token or cost budgets.
+- [x] **Structured outputs**: every agent returns a Pydantic schema (`Finding{claim, evidence[], risk, confidence}`); invalid outputs trigger a repair retry.
+- [x] **Planner-driven DAG**: the Orchestrator emits a plan; independent agents run **in parallel** (`asyncio.TaskGroup`); the Critic → Rebuttal → Judge debate runs for N rounds or until convergence.
+- [~] **Grounding and tools**: web search with citations, document upload, RAG over customer docs (pgvector), and a calculator for market sizing. Claims without evidence are flagged as unsupported in the UI.
+- [x] **Real synthesis**: a Synthesizer agent produces the `Directive` (decision, rationale, tradeoffs, phased plan, KPIs, risks with owners) from all findings and the debate transcript.
+- [x] **Memory v2**: per-tenant and per-project scoped, embedding-based retrieval with a relevance threshold, user-visible and deletable. Only *accepted* decisions are committed.
+- [x] **Prompt versioning**: prompts are files with version IDs, and each run records which versions it used.
+- [x] **Prompt-injection defenses**: delimit untrusted input, add an instruction hierarchy, sanitize what's stored in memory, and restrict tool permissions.
 
 ### Phase 3: Quality and evaluation (weeks 6–10, continuous)
-- [ ] **Golden mission set** (50–200 missions across domains) with rubric-based LLM-as-judge plus human spot checks on specificity, internal consistency, evidence coverage, actionability and critic usefulness.
-- [ ] Regression gate in CI: a prompt or model change must not lower eval scores beyond a threshold.
-- [ ] **Calibrated confidence**: track predicted confidence against user acceptance and outcome feedback, and publish a calibration curve.
-- [ ] Red-team suite: injection, jailbreaks, harmful-domain missions, PII leakage.
+- [x] **Golden mission set** (50–200 missions across domains) with rubric-based LLM-as-judge plus human spot checks on specificity, internal consistency, evidence coverage, actionability and critic usefulness.
+- [x] Regression gate in CI: a prompt or model change must not lower eval scores beyond a threshold.
+- [~] **Calibrated confidence**: track predicted confidence against user acceptance and outcome feedback, and publish a calibration curve.
+- [x] Red-team suite: injection, jailbreaks, harmful-domain missions, PII leakage.
 
 ### Phase 4: Enterprise platform (weeks 8–14)
-- [ ] **Identity**: OIDC/SAML SSO, orgs/workspaces, RBAC (owner, editor, viewer, auditor), SCIM later.
-- [ ] **Data**: Postgres with migrations (Alembic), row-level tenant isolation, encryption at rest, retention policies, export and delete (GDPR/DPDP).
-- [ ] **Durable runs**: a job queue with resumable SSE (`Last-Event-ID`), cancellation, and a run history that's replayable and comparable server-side.
-- [ ] **Governance**: immutable audit log of every decision (who accepted or challenged what, which prompt and model versions), and approval workflows.
-- [ ] **Security**: rate limiting, per-org spend caps, CSP and security headers, secret manager, SAST/DAST, and a threat model doc. Plan for **SOC 2 Type II** and **ISO 27001**; add HIPAA-ready controls (BAA, PHI isolation) before selling into healthcare.
-- [ ] **Hosting**: move long-running agent work off Vercel functions to containers (Fly, Render, ECS or Cloud Run); keep the static web on the CDN.
+- [~] **Identity**: OIDC/SAML SSO, orgs/workspaces, RBAC (owner, editor, viewer, auditor), SCIM later.
+- [~] **Data**: Postgres with migrations (Alembic), row-level tenant isolation, encryption at rest, retention policies, export and delete (GDPR/DPDP).
+- [~] **Durable runs**: a job queue with resumable SSE (`Last-Event-ID`), cancellation, and a run history that's replayable and comparable server-side.
+- [~] **Governance**: immutable audit log of every decision (who accepted or challenged what, which prompt and model versions), and approval workflows.
+- [~] **Security**: rate limiting, per-org spend caps, CSP and security headers, secret manager, SAST/DAST, and a threat model doc. Plan for **SOC 2 Type II** and **ISO 27001**; add HIPAA-ready controls (BAA, PHI isolation) before selling into healthcare.
+- [~] **Hosting**: move long-running agent work off Vercel functions to containers (Fly, Render, ECS or Cloud Run); keep the static web on the CDN.
 
 ### Phase 5: Observability, reliability and polish (continuous)
-- [ ] OpenTelemetry traces across API → queue → agent → LLM call; LLM tracing (Langfuse/LangSmith/Arize-style) with per-run tokens, latency and cost.
-- [ ] SLOs: p95 time to first token under 2 s, run success rate of 99%+, and error budget alerts. Use Sentry for frontend and backend errors.
-- [ ] Accessibility to WCAG 2.2 AA: labelled controls, focus traps, keyboard navigation, `prefers-reduced-motion` (pause Three.js), contrast.
-- [ ] Performance: code-split Three.js and the landing page, compress PNGs to WebP/AVIF, set a Lighthouse budget in CI.
-- [ ] i18n readiness, versioned public API with SDK, webhooks, and integrations (Slack, Notion, Jira export of the action plan).
+- [~] OpenTelemetry traces across API → queue → agent → LLM call; LLM tracing (Langfuse/LangSmith/Arize-style) with per-run tokens, latency and cost.
+- [~] SLOs: p95 time to first token under 2 s, run success rate of 99%+, and error budget alerts. Use Sentry for frontend and backend errors.
+- [~] Accessibility to WCAG 2.2 AA: labelled controls, focus traps, keyboard navigation, `prefers-reduced-motion` (pause Three.js), contrast.
+- [~] Performance: code-split Three.js and the landing page, compress PNGs to WebP/AVIF, set a Lighthouse budget in CI.
+- [~] i18n readiness, versioned public API with SDK, webhooks, and integrations (Slack, Notion, Jira export of the action plan).
 
 ---
 
@@ -197,3 +199,38 @@ Key design rules:
 5. Pin dependencies; add ruff, pytest and a minimal GitHub Actions workflow with 5–10 tests covering the stream contract.
 
 This slice makes the product *honest* (live mode works, outputs aren't faked) and creates the safety net (tests and CI) that every later phase depends on.
+
+---
+
+## 8. Implementation status
+
+All findings B1–B10 are fixed and covered by tests. Verification at the time of writing:
+
+- **Backend:** 49 pytest tests (SQLite and PostgreSQL 16), 88–93% coverage, ruff and strict mypy clean.
+- **Migrations:** apply, roll back and re-apply on Postgres; `alembic check` reports no drift.
+- **Frontend:** 9 Vitest unit tests and 4 Playwright e2e tests, including an axe WCAG 2.1 AA scan with no serious or critical violations.
+- **Evals:** 50 golden missions plus 8 red-team cases pass the regression gate.
+- **Dependencies:** `pip-audit` and `npm audit` report 0 known vulnerabilities.
+
+| Phase | Delivered | Partially done / remaining |
+|---|---|---|
+| 0 Stop the bleeding | All items | – |
+| 1 Foundation | TypeScript and modular frontend, zustand, ruff, mypy, pytest, ESLint (with jsx-a11y), Prettier, Vitest, Playwright, CI, CodeQL, Dependabot, pre-commit, CODEOWNERS, templates, pydantic-settings, Dockerfiles, compose | Kept the `server/` + `src/` layout instead of an `apps/` monorepo (lower churn, same separation). Docker images are built in CI only; this sandbox had no Docker daemon. |
+| 2 AI engine | LangGraph graph (parallel `Send` fan-out, critic→rebuttal→judge loop), LangChain gateway (OpenAI→Anthropic failover, structured outputs, repair retry, budgets, cost), synthesizer, scoped memory with similarity recall, versioned prompts, injection defenses, hallucinated-citation stripping | Grounding: Tavily web search only. Document upload/RAG over customer files is not built. |
+| 3 Evaluation | Golden set, deterministic rubric, LLM-as-judge (`--live`), red team, CI regression gate, weekly live-eval workflow, calibration endpoint (ECE) | Calibration needs real decided runs to re-fit the confidence weights. |
+| 4 Enterprise | JWT and OIDC (JWKS) auth, RBAC (5 roles), org isolation, JIT provisioning, rate limits, spend caps, audit log, event-sourced resumable runs, cancellation, timeouts, stale-run sweeper, Postgres + Alembic, security headers, threat model, `on_stream` mode for serverless | No interactive SSO login page (the app accepts IdP bearer tokens). SCIM, Postgres RLS, retention/deletion jobs and the SOC 2 / ISO 27001 / HIPAA programmes are organisational work still to do. Redis-backed bus and limiter for multi-instance background mode. |
+| 5 Ops & UX | Structured JSON logs with request IDs, Prometheus metrics, optional OTel/Sentry/LangSmith, health and readiness probes, runbook with alerts and SLOs, WCAG fixes (focus, dialogs, tabs, reduced motion), lazy Three.js, 550 KB → 6 KB background | i18n, public SDK and webhooks, and Slack/Notion/Jira integrations are not started. |
+
+### Additional defects found and fixed during implementation
+
+- Concurrent first requests from a new org raced on provisioning and returned 500. Found by e2e; fixed and covered by a regression test.
+- SQLite returned naive datetimes, so replayed event timestamps lost their timezone. Fixed with a UTC-aware column type.
+- Run execution would stall on serverless (work after the response is frozen). Fixed with `RUN_EXECUTION=on_stream` and an atomic claim.
+- Startup recovery failed *all* in-flight runs, which is unsafe with multiple instances. Replaced with a time-based sweeper and a hard per-run timeout.
+- Shutdown could deadlock if the sweeper was cancelled mid-query. It is now awaited before the engine is disposed.
+- Global `outline: none` removed visible keyboard focus. Restored with `:focus-visible` styles.
+
+### Known residual issue
+
+Under heavy repetition the backend test suite showed about one hang in ~70 local runs after the shutdown fix. I could not
+reproduce it with stack capture, so `pytest-timeout` (60s, thread dumps) now makes any recurrence fail fast in CI with a stack trace.

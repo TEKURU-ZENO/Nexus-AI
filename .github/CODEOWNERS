@@ -1,0 +1,4 @@
+# Default reviewers for every change. Add teams/paths as the project grows, e.g.
+#   /server/engine/   @org/ai-platform
+#   /server/core/security.py @org/security
+* @TEKURU-ZENO

@@ -1,0 +1,37 @@
+# Local production-parity stack: Postgres + API + web (nginx).
+#   cp server/.env.example server/.env   # add provider keys if you have them
+#   docker compose up --build            # → http://localhost:8080
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus
+      POSTGRES_DB: nexus
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: { context: ., dockerfile: Dockerfile.api }
+    env_file:
+      - path: server/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nexus:nexus@db:5432/nexus
+      ENVIRONMENT: local          # allows AUTH_MODE=dev; use staging/production with jwt/oidc
+      AUTH_MODE: ${AUTH_MODE:-dev}
+      CORS_ORIGINS: http://localhost:8080
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8000:8000"]
+
+  web:
+    build: { context: ., dockerfile: Dockerfile.web }
+    depends_on: [api]
+    ports: ["8080:8080"]
+
+volumes:
+  pgdata:

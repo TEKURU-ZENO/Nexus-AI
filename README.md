@@ -1,51 +1,132 @@
 # NEXUS
 
-An autonomous multi-agent intelligence operating system prototype built for a cinematic hackathon demo.
+**A multi-agent decision system with adversarial review.** You describe a mission; NEXUS plans it, runs
+specialist agents in parallel, makes a critic attack their findings, has a judge score the debate, and
+produces a directive with phases, KPIs, owned risks, and a confidence score that shows how it was computed.
 
-## Run
+[![CI](https://github.com/TEKURU-ZENO/Nexus-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/TEKURU-ZENO/Nexus-AI/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/TEKURU-ZENO/Nexus-AI/actions/workflows/codeql.yml/badge.svg)](https://github.com/TEKURU-ZENO/Nexus-AI/actions/workflows/codeql.yml)
 
-```bash
-npm install
-python -m pip install -r server/requirements.txt
+```
+START → guard ─┬─ blocked ─────────────────────────────────────────────→ END
+               └→ plan → [researcher ‖ architect ‖ strategist] → critic → rebuttal → judge
+                                                                   ↑                   │ unresolved &
+                                                                   └───────────────────┘ round < max
+                                                                                       ↓
+                                                                         synthesize → score → END
 ```
 
-In one terminal:
+| | |
+|---|---|
+| **Engine** | [LangGraph](https://langchain-ai.github.io/langgraph/) state graph with parallel fan-out and a bounded debate loop |
+| **Models** | LangChain gateway: OpenAI → Anthropic failover, structured outputs, repair retries, token budgets, cost tracking |
+| **Grounding** | Optional web search (Tavily) with citations; hallucinated URLs are stripped |
+| **Trust** | Computed confidence, simulated output clearly labelled and never stored, prompt-injection defenses |
+| **Platform** | FastAPI · SQLAlchemy (Postgres/SQLite) · Alembic · resumable SSE · JWT/OIDC · RBAC · audit log |
+| **Web** | React 19 + TypeScript · zustand · generated API types · WCAG 2.1 AA checked in CI |
+| **Quality** | 49 backend tests · 9 unit + 4 e2e frontend tests · 50-mission eval suite + red team · strict mypy |
+
+## Quick start
 
 ```bash
-npm run dev:server
+python -m venv .venv && source .venv/bin/activate
+pip install -r server/requirements-dev.txt
+npm ci
+cp server/.env.example server/.env    # optional: add OPENAI_API_KEY / ANTHROPIC_API_KEY
 ```
-
-In another terminal:
 
 ```bash
-npm run dev
+npm run dev:server    # API on http://127.0.0.1:8000  (docs at /api/docs)
 ```
 
-Add `OPENAI_API_KEY` to `server/.env` to enable real Responses API agent calls. Without a key, the backend still streams deterministic demo cognition so the presentation remains stable.
+```bash
+npm run dev           # web on http://127.0.0.1:5173
+```
 
-## Demo Mission
+Without API keys NEXUS runs on a deterministic **simulator**. It produces mission-specific but
+template-grade output, labels it as simulated, caps its confidence at 40, and never writes it to memory.
 
-Use:
+### Full stack with Postgres
 
-> Design an AI startup to reduce hospital misdiagnosis.
+```bash
+docker compose up --build      # → http://localhost:8080
+```
 
-NEXUS will simulate a live cognitive mesh with agent activation, streaming analysis, debate, dynamic graph updates, persistent memory traces, and a unified strategic directive.
+## How a run works
 
-## Strategic Workflow Focus
+1. **Guard**: the mission is normalised, checked for prompt injection (flagged) and harmful intent (blocked).
+2. **Plan**: the orchestrator restates the mission as a measurable objective and assigns one question per specialist.
+3. **Specialists** (parallel): researcher (with web search when configured), architect, and strategist each return
+   typed findings: claim, rationale, evidence, risk, calibrated confidence, recommendation.
+4. **Debate**: the critic names the most dangerous assumption and challenges specific claims; the team concedes,
+   defends or revises; the judge scores agreement and decides whether another round is needed (max `DEBATE_MAX_ROUNDS`).
+5. **Synthesis**: a directive with decision, rationale, tradeoffs, phased plan with exit criteria, KPIs, and risks with owners.
+6. **Confidence**: computed from claim confidence × external grounding × post-debate agreement × critic severity −
+   unresolved issues. The UI shows the breakdown.
+7. **Decision**: *Accept* commits the decision to project memory (live runs only), *Challenge* opens a linked
+   refinement run that targets the unresolved issues, *Reject* records the outcome. Every action is audited and feeds
+   the calibration report (`GET /api/v1/calibration`).
 
-The MVP is now optimized around Strategic Product Planning. Mission modes include Strategic Planning, Startup Validation, Technical Architecture, Risk Analysis, and Product Roadmapping.
+Every event is persisted with a sequence number, so streams resume after disconnects (`Last-Event-ID`), runs can be
+replayed (`GET /runs/{id}/events/log`), and abandoned runs are cancelled to stop spending tokens.
 
-Generated directives include risk levels, reasoning, recommendations, agent debate, and local session history so prior cognition traces can be reopened.
+## Configuration
 
-## Checkpoint Assets
+All settings are environment variables. [`server/.env.example`](server/.env.example) documents every one. The most important:
 
-- `docs/product-brief.md`
-- `docs/investor-one-pager.md`
-- `docs/user-flow.md`
-- `docs/demo-script.md`
-- `docs/landing-page-structure.md`
-- `docs/screenshot-pack.md`
-- `docs/public-perception-posts.md`
+| Variable | Default | Purpose |
+|---|---|---|
+| `LLM_PROVIDERS` | `openai,anthropic` | Ordered failover chain (keys that are unset are skipped) |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | – | Enable live providers |
+| `TAVILY_API_KEY` | – | Enable grounded web research |
+| `DATABASE_URL` | SQLite in `server/data` | Use `postgresql+asyncpg://…` in production |
+| `AUTH_MODE` | `dev` | `jwt` or `oidc` in staging/production (`dev` is refused there) |
+| `RUN_TOKEN_BUDGET` / `ORG_DAILY_SPEND_USD` / `RUNS_PER_MINUTE` | 120k / $25 / 6 | Cost and abuse controls |
+| `RUN_EXECUTION` | `background` (`on_stream` on Vercel) | Where runs execute; see [architecture](docs/architecture.md) |
+| `LANGSMITH_TRACING` | `false` | Trace every graph node and LLM call in LangSmith |
+
+## Development
+
+| Task | Command |
+|---|---|
+| Backend tests (+coverage) | `pytest --cov` |
+| Backend lint / types | `ruff check server evals scripts && ruff format --check server && mypy server` |
+| Frontend checks | `npm run typecheck && npm run lint && npm test` |
+| End-to-end + accessibility | `npx playwright test` |
+| Evals (simulator, CI gate) | `python -m evals.run_evals` |
+| Evals (live models) | `python -m evals.run_evals --live --limit 20` |
+| Regenerate API types | `npm run gen:api` |
+| New DB migration | `alembic revision --autogenerate -m "…"` then `alembic upgrade head` |
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and review rules.
+
+## Documentation
+
+- [Engineering audit and roadmap](docs/ENGINEERING_AUDIT.md), including implementation status
+- [Architecture and decision records](docs/architecture.md)
+- [Threat model](docs/threat-model.md)
+- [Operations runbook](docs/runbook.md)
+- [Security policy](SECURITY.md)
+- API reference: `/api/docs` (OpenAPI at `/api/openapi.json`, committed as [`openapi.json`](openapi.json))
+- Product material: [`docs/`](docs/) (brief, one-pager, demo script, user flow)
+
+## Project layout
+
+```
+server/
+  api/v1/        HTTP routes (runs, governance, system)
+  core/          config, auth/RBAC, rate limiting, logging, telemetry
+  engine/        LangGraph mission graph, confidence, safety
+  llm/           provider gateway (LangChain) and offline simulator
+  memory/        scoped long-term memory
+  prompts/       versioned agent prompts (Markdown)
+  services/      run lifecycle, audit, tenancy, export
+  db/ migrations/  SQLAlchemy models and Alembic migrations
+  tests/
+evals/           golden missions, red-team set, rubric, LLM judge, runner
+src/             React + TypeScript app (api/, components/, store/, lib/)
+e2e/             Playwright end-to-end and axe accessibility tests
+```
 
 ---
 
