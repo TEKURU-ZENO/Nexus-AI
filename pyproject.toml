@@ -1,0 +1,39 @@
+[project]
+name = "nexus-api"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["server/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["server/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "BLE", "RUF", "SIM", "PT"]
+ignore = ["E501", "PT018", "S101", "S105", "S106", "RUF001", "RUF002", "RUF003", "B008", "UP046", "UP047"]
+
+[tool.ruff.lint.per-file-ignores]
+"server/tests/**" = ["S", "BLE"]
+"evals/**" = ["S311"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["server/tests/", "server/migrations/"]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = ["langchain_openai.*", "langchain_anthropic.*", "opentelemetry.*", "sentry_sdk.*"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["server"]
+concurrency = ["greenlet", "thread"]
+omit = ["server/tests/*", "server/migrations/*"]

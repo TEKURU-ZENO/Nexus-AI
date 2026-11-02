@@ -5,3 +5,14 @@ server/server/data/
 server/.env
 __pycache__/
 *.pyc
+evals/reports/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+playwright-report/
+test-results/
+*.db
