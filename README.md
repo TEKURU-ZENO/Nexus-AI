@@ -26,6 +26,24 @@ START → guard ─┬─ blocked ───────────────�
 | **Web** | React 19 + TypeScript · zustand · generated API types · WCAG 2.1 AA checked in CI |
 | **Quality** | 49 backend tests · 9 unit + 4 e2e frontend tests · 50-mission eval suite + red team · strict mypy |
 
+## Does debate actually beat one good prompt?
+
+This is the premise of NEXUS, and it is **tested, not assumed**. `evals/ablation.py` runs three arms on the
+same missions with the same model and output schema:
+
+| Arm | What it is | LLM calls |
+|---|---|---|
+| `single` | One strong prompt writes the directive | 1 |
+| `refine` | Compute-matched control: draft, self-critique, revise | 2 |
+| `graph` | Full NEXUS: plan → parallel specialists → critic ⇄ rebuttal → judge → synthesis | ~8–12 |
+
+A blind pairwise judge (a different model family, both A/B orders, only consistent verdicts count) plus
+absolute scores and an arm-neutral rubric decide the result. "Debate wins" requires the Wilson 95% lower bound of
+the win rate to be above 50% and a sign test p < 0.05 against **both** baselines.
+
+Results are produced by the [`Ablation (Ollama)`](.github/workflows/ablation.yml) workflow on self-hosted models
+and committed to [`evals/results/`](evals/results/) via PR. **Until that file exists, the claim is unproven.**
+
 ## Quick start
 
 ```bash

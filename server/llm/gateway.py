@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol, TypeVar
+from typing import Any, Literal, Protocol, TypeVar
 
 import structlog
 from langchain_core.language_models import BaseChatModel
@@ -65,7 +65,8 @@ class Budget:
             raise BudgetExceeded(f"run token budget exhausted ({self.used}/{self.max_tokens})")
 
     def record(self, model: str, input_tokens: int, output_tokens: int) -> None:
-        price_in, price_out = PRICES.get(model, DEFAULT_PRICE)
+        # Self-hosted models (Ollama) have no per-token price.
+        price_in, price_out = (0.0, 0.0) if model.startswith("ollama/") else PRICES.get(model, DEFAULT_PRICE)
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
         self.cost_usd += (input_tokens * price_in + output_tokens * price_out) / 1_000_000
@@ -93,13 +94,20 @@ class Provider(Protocol):
 class LangChainProvider:
     """Wraps any LangChain chat model that supports tool-calling structured output."""
 
-    def __init__(self, name: str, model: str, chat_model: BaseChatModel) -> None:
+    def __init__(
+        self,
+        name: str,
+        model: str,
+        chat_model: BaseChatModel,
+        method: Literal["function_calling", "json_schema"] = "function_calling",
+    ) -> None:
         self.name = name
         self.model = model
         self._chat = chat_model
+        self._method = method
 
     async def invoke(self, schema: type[T], messages: list[BaseMessage]) -> tuple[T, int, int]:
-        runnable = self._chat.with_structured_output(schema, method="function_calling", include_raw=True)
+        runnable = self._chat.with_structured_output(schema, method=self._method, include_raw=True)
         out: dict[str, Any] = await runnable.ainvoke(messages)  # type: ignore[assignment]
         if out.get("parsing_error") or out.get("parsed") is None:
             raise ValueError(f"structured output invalid: {out.get('parsing_error')}")
@@ -139,6 +147,19 @@ def build_providers(settings: Settings) -> list[Provider]:
             if settings.llm_temperature is not None:
                 kwargs["temperature"] = settings.llm_temperature
             providers.append(LangChainProvider("anthropic", settings.anthropic_model, ChatAnthropic(**kwargs)))
+        elif name == "ollama" and settings.ollama_model:
+            from langchain_ollama import ChatOllama
+
+            # json_schema → Ollama constrained decoding: far more reliable than tool calls on small local models.
+            chat = ChatOllama(
+                model=settings.ollama_model,
+                base_url=settings.ollama_base_url,
+                num_ctx=settings.ollama_num_ctx,
+                num_predict=settings.llm_max_output_tokens,
+                temperature=settings.llm_temperature if settings.llm_temperature is not None else 0.2,
+                client_kwargs={"timeout": settings.llm_timeout_s},
+            )
+            providers.append(LangChainProvider("ollama", f"ollama/{settings.ollama_model}", chat, method="json_schema"))
     return providers
 
 

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from server.engine.confidence import GROUNDED_KINDS
 from server.engine.safety import DATA_HANDLING_RULES
 from server.prompts import all_prompt_versions, load_prompt
+from server.schemas.agents import Directive
 from server.schemas.api import RunResult
 
 _STOP = {
@@ -135,3 +136,41 @@ def score_result(result: RunResult, mission: str, refinement: str | None = None)
     ]
     s.criteria["no_prompt_leakage"] = 0.0 if any(m in text for m in leak_markers) else 1.0
     return s
+
+
+# --------------------------------------------------------------------------- arm-neutral scoring
+# The full rubric above rewards debate artefacts (reports, critiques, rebuttals), which would rig an
+# ablation in favour of the graph. This variant looks only at the final directive, so every arm is
+# judged on exactly the same evidence.
+
+NEUTRAL_WEIGHTS = {
+    "completeness": 0.25,
+    "specificity": 0.3,
+    "actionability": 0.2,
+    "constraint_adherence": 0.15,
+    "no_prompt_leakage": 0.1,
+}
+
+
+def score_directive(directive: Directive | None, mission: str, refinement: str | None = None) -> Score:
+    result = RunResult(directive=directive)
+    full = score_result(result, mission, refinement)
+    if directive is None:
+        return Score(criteria=dict.fromkeys(NEUTRAL_WEIGHTS, 0.0), notes=full.notes)
+    d = directive
+    checks = [
+        len(d.phases) >= 2,
+        len(d.kpis) >= 2,
+        len(d.risks) >= 2,
+        all(r.owner.strip() for r in d.risks),
+        len(d.tradeoffs) >= 2,
+        len(d.next_actions) >= 3,
+        all(p.exit_criteria.strip() for p in d.phases),
+    ]
+    criteria = {k: full.criteria[k] for k in NEUTRAL_WEIGHTS if k != "completeness"}
+    criteria["completeness"] = sum(checks) / len(checks)
+    return Score(criteria=criteria, notes=full.notes)
+
+
+def neutral_total(score: Score) -> float:
+    return round(sum(NEUTRAL_WEIGHTS[k] * v for k, v in score.criteria.items()), 4)

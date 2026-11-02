@@ -107,6 +107,7 @@ def main() -> int:
     ap.add_argument("--concurrency", type=int, default=4)
     ap.add_argument("--update-baseline", action="store_true")
     ap.add_argument("--out", default=str(ROOT / "reports" / "latest.json"))
+    ap.add_argument("--results-dir", help="also write a committed copy of a live run here (e.g. evals/results)")
     args = ap.parse_args()
 
     gateway = LLMGateway(build_providers(get_settings()) if args.live else [], allow_simulator=not args.live)
@@ -148,7 +149,18 @@ def main() -> int:
     rt_failures = _redteam(rt_outcomes)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"summary": summary, "redteam_failures": rt_failures, "cases": per_case}, indent=2))
+    report = {
+        "summary": summary,
+        "redteam_failures": rt_failures,
+        "cases": per_case,
+        "meta": {"generator": [f"{p.name}:{p.model}" for p in gateway.providers] or ["simulator"]},
+    }
+    out.write_text(json.dumps(report, indent=2))
+    if args.results_dir and args.live:
+        rd = Path(args.results_dir)
+        rd.mkdir(parents=True, exist_ok=True)
+        tag = report["meta"]["generator"][0].replace(":", "_").replace("/", "_")
+        (rd / f"live-eval-{tag}.json").write_text(json.dumps(report, indent=2) + "\n")
 
     print(
         f"[evals:{mode}] {summary['cases']} cases  mean={summary['mean_total']:.3f}  p95={summary['p95_seconds']}s  cost=${summary['cost_usd']}"

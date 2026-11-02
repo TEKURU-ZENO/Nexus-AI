@@ -1,0 +1,143 @@
+name: Ablation (Ollama)
+
+# Runs the debate-vs-single-prompt ablation and a live golden-set eval on self-hosted Ollama models,
+# then opens a PR that commits the numbers to evals/results/. No API keys needed.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Generator model (Ollama tag)"
+        default: "qwen2.5:3b"
+      judge_model:
+        description: "Judge model (Ollama tag; prefer a different family than the generator)"
+        default: "llama3.1:8b"
+      limit:
+        description: "Missions in the ablation (stratified across domains)"
+        default: "15"
+      live_eval_limit:
+        description: "Missions in the live golden-set eval"
+        default: "6"
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  OLLAMA_BASE_URL: http://127.0.0.1:11434
+  OLLAMA_MAX_LOADED_MODELS: "2"
+  OLLAMA_NUM_PARALLEL: "1"
+  LLM_PROVIDERS: ollama
+  LLM_TIMEOUT_S: "1200"
+  LLM_MAX_OUTPUT_TOKENS: "2000"
+  OLLAMA_NUM_CTX: "16384"
+  RUN_TOKEN_BUDGET: "400000"
+  LOG_LEVEL: WARNING
+
+jobs:
+  ablation:
+    name: Ablation shard ${{ matrix.shard }}/5
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
+      - run: pip install -r server/requirements.txt
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          sudo systemctl stop ollama 2>/dev/null || true   # run our own server so models live in the cached dir
+          mkdir -p "$HOME/.ollama/models"
+          (OLLAMA_MODELS="$HOME/.ollama/models" ollama serve > ollama.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf "$OLLAMA_BASE_URL/api/tags" >/dev/null && break; sleep 2; done
+      - uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ inputs.model }}-${{ inputs.judge_model }}
+      - name: Pull models
+        run: |
+          ollama pull "${{ inputs.model }}"
+          ollama pull "${{ inputs.judge_model }}"
+      - name: Run shard
+        env:
+          OLLAMA_MODEL: ${{ inputs.model }}
+        run: |
+          python -m evals.ablation --limit "${{ inputs.limit }}" --shard "${{ matrix.shard }}/5" \
+            --judge-model "${{ inputs.judge_model }}" --out "part-${{ matrix.shard }}.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: "ablation-part-${{ matrix.shard }}", path: "part-${{ matrix.shard }}.json", if-no-files-found: warn }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: "ollama-log-${{ matrix.shard }}", path: ollama.log }
+
+  live-eval:
+    name: Live golden-set eval + LLM judge
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
+      - run: pip install -r server/requirements.txt
+      - name: Install and start Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          sudo systemctl stop ollama 2>/dev/null || true   # run our own server so models live in the cached dir
+          mkdir -p "$HOME/.ollama/models"
+          (OLLAMA_MODELS="$HOME/.ollama/models" ollama serve > ollama.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf "$OLLAMA_BASE_URL/api/tags" >/dev/null && break; sleep 2; done
+      - uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ inputs.model }}-${{ inputs.judge_model }}
+      - run: ollama pull "${{ inputs.model }}"
+      - name: Run live eval
+        env:
+          OLLAMA_MODEL: ${{ inputs.model }}
+        run: python -m evals.run_evals --live --limit "${{ inputs.live_eval_limit }}" --concurrency 1 --results-dir results-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: live-eval, path: results-out/, if-no-files-found: warn }
+
+  publish:
+    name: Merge and open results PR
+    needs: [ablation, live-eval]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
+      - run: pip install -r server/requirements.txt
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Merge shards and summarise
+        run: |
+          ls -R artifacts | head -50
+          parts=$(find artifacts -name 'part-*.json' | sort)
+          test -n "$parts" || { echo "no ablation shards produced output"; exit 1; }
+          python -m evals.ablation --merge $parts --out ablation-merged.json --results-dir evals/results | tee summary.md
+          find artifacts/live-eval -name '*.json' -exec cp {} evals/results/ \; 2>/dev/null || true
+          cat evals/results/ablation-latest.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: eval-results, path: "evals/results/" }
+      # Requires Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: eval-results/${{ github.run_id }}
+          commit-message: "eval: ablation and live-eval results (${{ inputs.model }}, judge ${{ inputs.judge_model }})"
+          title: "Eval results: debate vs single prompt on ${{ inputs.model }}"
+          body: |
+            Automated results from workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
+
+            Generator `${{ inputs.model }}`, judge `${{ inputs.judge_model }}` (Ollama, CPU runners).
+            See `evals/results/ablation-latest.md` for the summary; raw per-case outputs and judge rationales are in the JSON files.
+          add-paths: evals/results/*

@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-5-mini"
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-sonnet-5-5"
+    # Self-hosted models via Ollama (add "ollama" to LLM_PROVIDERS), e.g. OLLAMA_MODEL=qwen2.5:7b
+    ollama_model: str | None = None
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_num_ctx: int = 16384
     llm_timeout_s: float = 60.0
     llm_max_retries: int = 2
     llm_max_output_tokens: int = 4000
