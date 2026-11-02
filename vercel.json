@@ -1,7 +1,22 @@
 {
   "builds": [
-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
-    { "src": "server/main.py", "use": "@vercel/python" }
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "server/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "server/**/*.md",
+          "server/**/*.py"
+        ]
+      }
+    }
   ],
   "routes": [
     {
@@ -15,10 +30,27 @@
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
       }
     },
-    { "src": "/api/(.*)", "dest": "server/main.py" },
-    { "src": "/health", "dest": "server/main.py" },
-    { "src": "/assets/(.*)", "headers": { "Cache-Control": "public, max-age=31536000, immutable" }, "continue": true },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "server/main.py"
+    },
+    {
+      "src": "/health",
+      "dest": "server/main.py"
+    },
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      },
+      "continue": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }

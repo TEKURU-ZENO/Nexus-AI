@@ -88,7 +88,10 @@ def test_dev_token_endpoint_disabled_outside_jwt_mode(tmp_path: Path) -> None:
         assert c.post("/api/v1/auth/dev-token", json={"subject": "a", "org": "b"}).status_code == 404
 
 
-def test_blank_env_values_fall_back_to_defaults(tmp_path: Path) -> None:
+def test_blank_env_values_fall_back_to_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Real environment variables outrank the .env file; clear the ones CI sets so only the file is tested.
+    for var in ("DATABASE_URL", "OPENAI_API_KEY", "AUTH_MODE", "LLM_PROVIDERS"):
+        monkeypatch.delenv(var, raising=False)
     env = tmp_path / ".env"
     env.write_text("DATABASE_URL=\nOPENAI_API_KEY=\nAUTH_MODE=dev   # comment\nLLM_PROVIDERS=openai, anthropic\n")
     from server.core.config import Settings

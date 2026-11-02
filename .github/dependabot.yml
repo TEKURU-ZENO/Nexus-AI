@@ -8,6 +8,18 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
+    ignore:
+      # Held back until peers support them (each broke `npm ci` and the Vercel build; see PRs #3 and #10):
+      # eslint-plugin-jsx-a11y supports eslint <=9; typescript-eslint and openapi-typescript need typescript <6.1.
+      - dependency-name: "eslint"
+        versions: [">=10"]
+      - dependency-name: "@eslint/js"
+        versions: [">=10"]
+      - dependency-name: "typescript"
+        versions: [">=6"]
+      # Types must match the Node 22 runtime used in CI and Dockerfile.web.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
     groups:
       react: { patterns: ["react", "react-dom", "@types/react*"] }
       lint: { patterns: ["eslint*", "@eslint/*", "typescript-eslint", "prettier"] }
