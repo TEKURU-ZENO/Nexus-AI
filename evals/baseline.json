@@ -1,0 +1,14 @@
+{
+  "simulator": {
+    "mean_total": 1.0,
+    "criteria": {
+      "completeness": 1.0,
+      "specificity": 1.0,
+      "debate_integrity": 1.0,
+      "actionability": 1.0,
+      "constraint_adherence": 1.0,
+      "calibration_sanity": 1.0,
+      "no_prompt_leakage": 1.0
+    }
+  }
+}

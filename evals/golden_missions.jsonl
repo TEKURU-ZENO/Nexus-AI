@@ -1,0 +1,50 @@
+{"id": "g001", "domain": "healthcare", "mode": "Strategic Planning", "mission": "Design an AI-native platform that reduces diagnostic errors in mid-sized hospitals."}
+{"id": "g002", "domain": "healthcare", "mode": "Startup Validation", "mission": "Validate demand for a remote patient monitoring service for post-surgery recovery."}
+{"id": "g003", "domain": "healthcare", "mode": "Risk Analysis", "mission": "Assess the risks of deploying an LLM triage assistant in an emergency department."}
+{"id": "g004", "domain": "healthcare", "mode": "Technical Architecture", "mission": "Architect a HIPAA-compliant data pipeline for clinical trial recruitment."}
+{"id": "g005", "domain": "healthcare", "mode": "Product Roadmapping", "mission": "Plan a 12-month roadmap for a dental clinic scheduling and recall product."}
+{"id": "g006", "domain": "cybersecurity", "mode": "Strategic Planning", "mission": "Build a response strategy for an enterprise ransomware attack on a logistics company."}
+{"id": "g007", "domain": "cybersecurity", "mode": "Technical Architecture", "mission": "Design a zero-trust access architecture for a 2,000-person hybrid workforce."}
+{"id": "g008", "domain": "cybersecurity", "mode": "Risk Analysis", "mission": "Analyse third-party vendor risk for a fintech that relies on 40 SaaS tools."}
+{"id": "g009", "domain": "cybersecurity", "mode": "Startup Validation", "mission": "Validate a managed phishing-simulation service for small accounting firms."}
+{"id": "g010", "domain": "cybersecurity", "mode": "Product Roadmapping", "mission": "Roadmap a security posture dashboard for mid-market CISOs."}
+{"id": "g011", "domain": "education", "mode": "Strategic Planning", "mission": "Launch an AI education copilot for rural schools with poor connectivity."}
+{"id": "g012", "domain": "education", "mode": "Startup Validation", "mission": "Validate a tutoring marketplace for adult learners retraining into data jobs."}
+{"id": "g013", "domain": "education", "mode": "Product Roadmapping", "mission": "Plan the roadmap for a teacher grading assistant used across a school district."}
+{"id": "g014", "domain": "education", "mode": "Risk Analysis", "mission": "Assess student-privacy and bias risks of automated essay scoring."}
+{"id": "g015", "domain": "education", "mode": "Technical Architecture", "mission": "Architect an offline-first learning app that syncs when connectivity returns."}
+{"id": "g016", "domain": "mobility", "mode": "Strategic Planning", "mission": "Create a sustainable AI-driven public transportation model for megacities."}
+{"id": "g017", "domain": "mobility", "mode": "Startup Validation", "mission": "Validate an on-demand microtransit service for suburban commuters."}
+{"id": "g018", "domain": "mobility", "mode": "Technical Architecture", "mission": "Design real-time fleet telemetry for 5,000 electric buses."}
+{"id": "g019", "domain": "mobility", "mode": "Risk Analysis", "mission": "Analyse risks of dynamic congestion pricing in a European capital."}
+{"id": "g020", "domain": "mobility", "mode": "Product Roadmapping", "mission": "Roadmap a multimodal trip-planning app for a regional transit authority."}
+{"id": "g021", "domain": "retail", "mode": "Startup Validation", "mission": "Open a bakery in Lisbon that sells gluten-free bread to tourists and locals."}
+{"id": "g022", "domain": "retail", "mode": "Strategic Planning", "mission": "Grow a family-owned hardware store facing competition from big-box retailers."}
+{"id": "g023", "domain": "retail", "mode": "Product Roadmapping", "mission": "Plan a loyalty program roadmap for a chain of 12 coffee shops."}
+{"id": "g024", "domain": "retail", "mode": "Risk Analysis", "mission": "Assess the risks of expanding a restaurant brand into a second city."}
+{"id": "g025", "domain": "retail", "mode": "Technical Architecture", "mission": "Design inventory forecasting for a 30-store fashion retailer."}
+{"id": "g026", "domain": "finance", "mode": "Strategic Planning", "mission": "Launch an embedded-payments product for vertical SaaS platforms."}
+{"id": "g027", "domain": "finance", "mode": "Risk Analysis", "mission": "Assess model risk of an ML credit-scoring system for thin-file borrowers."}
+{"id": "g028", "domain": "finance", "mode": "Startup Validation", "mission": "Validate an invoice-financing product for freelance designers."}
+{"id": "g029", "domain": "finance", "mode": "Technical Architecture", "mission": "Architect real-time fraud detection for a card issuer processing 2M transactions/day."}
+{"id": "g030", "domain": "finance", "mode": "Product Roadmapping", "mission": "Plan a roadmap for a small-business bookkeeping assistant."}
+{"id": "g031", "domain": "saas", "mode": "Technical Architecture", "mission": "Design a scalable multi-tenant SaaS platform for multi-agent workflows."}
+{"id": "g032", "domain": "saas", "mode": "Strategic Planning", "mission": "Reposition a declining project-management tool toward regulated industries."}
+{"id": "g033", "domain": "saas", "mode": "Startup Validation", "mission": "Validate an AI meeting-notes product for legal teams."}
+{"id": "g034", "domain": "saas", "mode": "Product Roadmapping", "mission": "Roadmap SOC 2 and enterprise SSO readiness for a seed-stage startup."}
+{"id": "g035", "domain": "saas", "mode": "Risk Analysis", "mission": "Analyse platform risk of building a business on a single LLM provider."}
+{"id": "g036", "domain": "energy", "mode": "Strategic Planning", "mission": "Plan a community solar program for low-income neighbourhoods."}
+{"id": "g037", "domain": "energy", "mode": "Technical Architecture", "mission": "Design a demand-response system for commercial HVAC fleets."}
+{"id": "g038", "domain": "energy", "mode": "Risk Analysis", "mission": "Assess grid-interconnection risks for a 50 MW battery storage project."}
+{"id": "g039", "domain": "agriculture", "mode": "Startup Validation", "mission": "Validate a drone-based crop-health service for smallholder farmers."}
+{"id": "g040", "domain": "agriculture", "mode": "Strategic Planning", "mission": "Reduce post-harvest food loss for a fruit cooperative."}
+{"id": "g041", "domain": "public-sector", "mode": "Strategic Planning", "mission": "Digitise permit applications for a mid-sized city government."}
+{"id": "g042", "domain": "public-sector", "mode": "Risk Analysis", "mission": "Assess risks of using AI to prioritise social-services casework."}
+{"id": "g043", "domain": "manufacturing", "mode": "Technical Architecture", "mission": "Design predictive maintenance for a plant with 300 CNC machines."}
+{"id": "g044", "domain": "manufacturing", "mode": "Strategic Planning", "mission": "Reshore production of a consumer electronics component to Mexico."}
+{"id": "g045", "domain": "media", "mode": "Startup Validation", "mission": "Validate a subscription newsletter for local business news."}
+{"id": "g046", "domain": "media", "mode": "Product Roadmapping", "mission": "Roadmap AI-assisted video editing for independent creators."}
+{"id": "g047", "domain": "hr", "mode": "Strategic Planning", "mission": "Reduce first-year attrition in a 400-person customer support organisation."}
+{"id": "g048", "domain": "hr", "mode": "Risk Analysis", "mission": "Assess legal and fairness risks of AI resume screening."}
+{"id": "g049", "domain": "logistics", "mode": "Technical Architecture", "mission": "Design route optimisation for a last-mile delivery fleet of 800 vans."}
+{"id": "g050", "domain": "nonprofit", "mode": "Strategic Planning", "mission": "Scale a literacy nonprofit from one city to five without losing quality."}
