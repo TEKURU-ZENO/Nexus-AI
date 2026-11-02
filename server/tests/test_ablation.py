@@ -40,13 +40,16 @@ def _case(i: int, outcome: str) -> dict[str, Any]:
         a: {"directive": d, "llm_calls": 1, "input_tokens": 1, "output_tokens": 1, "seconds": 1.0, "cost_usd": 0.0}
         for a in ab.ARMS
     }
-    pair = {"outcome": dict.fromkeys(ab.DIMENSIONS, outcome)}
+    # A judge that passes its self-audit: balanced positions, varied scores, correct on the known-answer probe.
+    raw = [{"overall": "A"}, {"overall": "B"}] if i % 2 else [{"overall": "B"}, {"overall": "A"}]
+    pair = {"outcome": dict.fromkeys(ab.DIMENSIONS, outcome), "raw": raw}
     return {
         "id": f"c{i}",
         "arms": arms,
         "rubric": dict.fromkeys(ab.ARMS, 0.9),
         "pairwise": {f"{x}_vs_{y}": pair for x, y in ab.COMPARISONS},
-        "absolute": {a: dict.fromkeys(ab.DIMENSIONS, 7) for a in ab.ARMS},
+        "absolute": {a: dict.fromkeys(ab.DIMENSIONS, 4 + (i + k) % 6) for k, a in enumerate(ab.ARMS)},
+        "probe": {"outcome": {"overall": "win"}},
     }
 
 
@@ -127,3 +130,33 @@ def test_dry_run_cannot_be_written_as_results(tmp_path: Any) -> None:
 
 def test_simulator_unchanged_for_directive() -> None:
     assert simulate  # the simulator is only used by --dry-run; real runs disable it (see test above)
+
+
+def _raw_case(i: int, first: str, second: str, score: int) -> dict[str, Any]:
+    c = _case(i, "tie")
+    for p in c["pairwise"].values():
+        p["raw"] = [{"overall": first}, {"overall": second}]
+    c["absolute"] = {a: dict.fromkeys(ab.DIMENSIONS, score) for a in ab.ARMS}
+    return c
+
+
+def test_position_biased_judge_makes_result_inconclusive() -> None:
+    """Reproduces the first live run: the judge picked position A 88% of the time and scored everything 8."""
+    s = ab.summarise([_raw_case(i, "A", "A", 8) for i in range(15)])
+    assert s["judge_validity"]["valid"] is False
+    assert set(s["judge_validity"]["failed"]) == {"position_bias", "score_spread"}
+    assert s["verdict"].startswith("Inconclusive")
+
+
+def test_valid_judge_passes_self_audit() -> None:
+    cases = [_raw_case(i, "A" if i % 2 else "B", "B" if i % 2 else "A", 4 + i % 6) for i in range(20)]
+    for c in cases:
+        c["probe"] = {"outcome": {"overall": "win"}}
+    v = ab.summarise(cases)["judge_validity"]
+    assert v["valid"] is True, v
+
+
+def test_off_topic_probe_is_actually_off_topic() -> None:
+    case = ab.select_cases(1, 1)[0]
+    probe = ab.off_topic_directive(case)
+    assert case["mission"].split()[2].lower() not in probe["decision"].lower()

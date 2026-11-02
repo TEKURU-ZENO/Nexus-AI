@@ -42,7 +42,15 @@ absolute scores and an arm-neutral rubric decide the result. "Debate wins" requi
 the win rate to be above 50% and a sign test p < 0.05 against **both** baselines.
 
 Results are produced by the [`Ablation (Ollama)`](.github/workflows/ablation.yml) workflow on self-hosted models
-and committed to [`evals/results/`](evals/results/) via PR. **Until that file exists, the claim is unproven.**
+and committed to [`evals/results/`](evals/results/). The judge audits itself (position bias, score spread, and a
+known-answer probe against an off-topic plan); if it fails, the result is reported as inconclusive.
+
+**Current status: unproven.** Run 1 (generator `qwen2.5:3b`, judge `llama3.1:8b`, 15 missions, CPU)
+generated all 45 directives without error, but the judge failed its self-audit: it chose whichever plan was
+shown first in 88% of decisive verdicts and gave every directive the same score. Its verdicts were therefore
+discarded as inconclusive ([summary](evals/results/ablation-latest.md)). What run 1 does establish is the cost
+of debate: about 11 LLM calls, 24× the tokens and 13× the wall time of a single prompt per mission. A run with
+a stronger judge from a different model family is next.
 
 ## Quick start
 

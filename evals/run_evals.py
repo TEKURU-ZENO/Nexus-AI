@@ -35,6 +35,9 @@ def _load(name: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in (ROOT / name).read_text().splitlines() if line.strip()]
 
 
+JUDGE: LLMGateway | None = None  # optional separate judge (different model) for --live runs
+
+
 async def _run_one(gateway: LLMGateway, case: dict[str, Any]) -> dict[str, Any]:
     settings = get_settings()
     deps = EngineDeps(
@@ -66,7 +69,7 @@ async def _run_one(gateway: LLMGateway, case: dict[str, Any]) -> dict[str, Any]:
     judged, judge_error = None, None
     if not gateway.simulator_only:
         try:
-            judged = await judge(gateway, case["mission"], result)
+            judged = await judge(JUDGE or gateway, case["mission"], result)
         except Exception as exc:  # noqa: BLE001 - a judge failure must not discard the generated result
             judge_error = f"{type(exc).__name__}: {str(exc)[:200]}"
     return {
@@ -130,10 +133,17 @@ def main() -> int:
     ap.add_argument("--concurrency", type=int, default=4)
     ap.add_argument("--update-baseline", action="store_true")
     ap.add_argument("--out", default=str(ROOT / "reports" / "latest.json"))
+    ap.add_argument("--judge-model", help="Ollama model for the LLM judge (default: the generator itself)")
     ap.add_argument("--results-dir", help="also write a committed copy of a live run here (e.g. evals/results)")
     args = ap.parse_args()
 
     gateway = LLMGateway(build_providers(get_settings()) if args.live else [], allow_simulator=not args.live)
+    global JUDGE
+    if args.live and args.judge_model:
+        js = get_settings().model_copy(
+            update={"ollama_model": args.judge_model, "ollama_num_ctx": 8192, "llm_temperature": 0.0}
+        )
+        JUDGE = LLMGateway(build_providers(js), allow_simulator=False)
     mode = "live" if args.live else "simulator"
     golden = _load("golden_missions.jsonl")[: args.limit or None]
     outcomes = asyncio.run(_gather(gateway, golden, args.concurrency))

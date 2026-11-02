@@ -48,6 +48,7 @@ from server.core.config import Settings, get_settings
 from server.engine.graph import MISSION_GRAPH, EngineDeps, MissionState, _context_block
 from server.engine.safety import DATA_HANDLING_RULES, fence
 from server.llm.gateway import Budget, LLMGateway, build_providers
+from server.llm.simulator import simulate
 from server.prompts import all_prompt_versions
 from server.schemas.agents import Directive
 from server.tools.search import SearchTool
@@ -232,6 +233,47 @@ def bootstrap_mean_diff(diffs: list[float], iters: int = 5000, seed: int = 7) ->
     }
 
 
+POSITION_BIAS_LIMIT = 0.75  # share of decisive raw verdicts allowed to favour one position
+MIN_SCORE_STD = 0.5  # absolute "overall" scores must vary at least this much across directives
+MIN_PROBE_ACCURACY = 0.8  # judge must prefer the on-topic plan over an off-topic one this often
+
+
+def judge_validity(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Self-audit of the judge. If it fails, pairwise results cannot support any conclusion."""
+    raw = [r["overall"] for c in cases for p in c.get("pairwise", {}).values() for r in p.get("raw", [])]
+    decisive = [r for r in raw if r in ("A", "B")]
+    pos_a = round(sum(r == "A" for r in decisive) / len(decisive), 4) if decisive else None
+    scores = [s["overall"] for c in cases for s in c.get("absolute", {}).values()]
+    std = round((fmean((x - fmean(scores)) ** 2 for x in scores)) ** 0.5, 4) if len(scores) > 1 else None
+    probes = [c["probe"]["outcome"]["overall"] for c in cases if c.get("probe")]
+    probe_acc = round(sum(p == "win" for p in probes) / len(probes), 4) if probes else None
+    checks = {
+        "position_bias": {
+            "value": pos_a,
+            "rule": f"decisive verdicts choosing position A within [{1 - POSITION_BIAS_LIMIT}, {POSITION_BIAS_LIMIT}]",
+            "pass": pos_a is not None and (1 - POSITION_BIAS_LIMIT) <= pos_a <= POSITION_BIAS_LIMIT,
+        },
+        "score_spread": {
+            "value": std,
+            "rule": f"std of absolute overall scores >= {MIN_SCORE_STD}",
+            "pass": std is not None and std >= MIN_SCORE_STD,
+        },
+        "known_answer_probe": {
+            "value": probe_acc,
+            "n": len(probes),
+            "rule": f"prefers on-topic over off-topic directive (both orders) >= {MIN_PROBE_ACCURACY}",
+            "pass": None if probe_acc is None else probe_acc >= MIN_PROBE_ACCURACY,
+        },
+    }
+    failed = [k for k, v in checks.items() if v["pass"] is False]
+    return {
+        "valid": not failed and checks["position_bias"]["pass"],
+        "failed": failed,
+        "checks": checks,
+        "raw_verdicts": {"A": raw.count("A"), "B": raw.count("B"), "tie": raw.count("tie")},
+    }
+
+
 def summarise(cases: list[dict[str, Any]]) -> dict[str, Any]:
     ok = [c for c in cases if all(c["arms"][a]["directive"] for a in ARMS)]
     summary: dict[str, Any] = {
@@ -310,6 +352,14 @@ def summarise(cases: list[dict[str, Any]]) -> dict[str, Any]:
         verdict = "A single strong prompt beats the debate graph."
     else:
         verdict = "No statistically significant difference between the debate graph and a single strong prompt."
+    validity = judge_validity(ok)
+    summary["judge_validity"] = validity
+    if judged and not validity["valid"]:
+        verdict = (
+            "Inconclusive: the judge failed validity checks ("
+            + ", ".join(validity["failed"] or ["position_bias"])
+            + "), so pairwise results cannot support any conclusion about debate vs single prompt."
+        )
     summary["verdict"] = verdict
     return summary
 
@@ -361,6 +411,10 @@ async def run_case(
                 record["pairwise"][f"{x}_vs_{y}"] = await judge_pair(judge, case, directives[x], directives[y])  # type: ignore[arg-type]
             except Exception as exc:  # noqa: BLE001
                 record.setdefault("judge_errors", []).append(f"{x}_vs_{y}: {type(exc).__name__}")
+        try:
+            record["probe"] = await judge_pair(judge, case, directives["single"], off_topic_directive(case))  # type: ignore[arg-type]
+        except Exception as exc:  # noqa: BLE001
+            record.setdefault("judge_errors", []).append(f"probe: {type(exc).__name__}")
         record["absolute"] = {}
         for a in ARMS:
             try:
@@ -375,7 +429,18 @@ async def run_case(
     return record
 
 
-def _gateways(settings: Settings, judge_model: str | None, dry_run: bool) -> tuple[LLMGateway, LLMGateway | None]:
+def off_topic_directive(case: dict[str, Any]) -> dict[str, Any]:
+    """A well-formed directive written for a *different* domain's mission: a judge must never prefer it."""
+    rows = [json.loads(line) for line in (ROOT / "golden_missions.jsonl").read_text().splitlines() if line.strip()]
+    other = next(r for r in sorted(rows, key=lambda r: r["id"]) if r["domain"] != case["domain"])
+    return simulate(
+        Directive, {"mission": other["mission"], "mode": case.get("mode", "Strategic Planning")}
+    ).model_dump(mode="json")
+
+
+def _gateways(
+    settings: Settings, judge_model: str | None, dry_run: bool, judge_num_ctx: int | None = None
+) -> tuple[LLMGateway, LLMGateway | None]:
     if dry_run:
         return LLMGateway([], allow_simulator=True), None
     gen_providers = build_providers(settings)
@@ -383,7 +448,12 @@ def _gateways(settings: Settings, judge_model: str | None, dry_run: bool) -> tup
         sys.exit(
             "No live provider configured. Set LLM_PROVIDERS and a key, or LLM_PROVIDERS=ollama OLLAMA_MODEL=… (use --dry-run for plumbing only)."
         )
-    judge_settings = settings.model_copy(update={"ollama_model": judge_model}) if judge_model else settings
+    update: dict[str, Any] = {"llm_temperature": 0.0}  # deterministic judging
+    if judge_model:
+        update["ollama_model"] = judge_model
+    if judge_num_ctx:
+        update["ollama_num_ctx"] = judge_num_ctx
+    judge_settings = settings.model_copy(update=update)
     # Never fall back to the simulator: a simulated arm would corrupt the comparison.
     return LLMGateway(gen_providers, allow_simulator=False), LLMGateway(
         build_providers(judge_settings), allow_simulator=False
@@ -429,6 +499,17 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         f"**Verdict:** {s['verdict']}",
         "",
+        "## Judge validity (self-audit)",
+        "",
+        "| Check | Value | Rule | Pass |",
+        "|---|---|---|---|",
+        *[
+            f"| {k} | {v['value']} | {v['rule']} | {v['pass']} |"
+            for k, v in s.get("judge_validity", {}).get("checks", {}).items()
+        ],
+        "",
+        f"Raw pairwise verdicts (both orders, overall): {s.get('judge_validity', {}).get('raw_verdicts')}",
+        "",
         "## Pairwise (blind, both orders; overall)",
         "",
         "| Comparison | Wins | Losses | Ties | Win rate (decisive) | Wilson 95% | Sign test p | Significant |",
@@ -473,7 +554,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 async def _run(args: argparse.Namespace) -> dict[str, Any]:
     settings = get_settings()
-    gen, judge = _gateways(settings, args.judge_model, args.dry_run)
+    gen, judge = _gateways(settings, args.judge_model, args.dry_run, args.judge_num_ctx)
     cases = select_cases(args.limit, args.seed)
     if args.shard:
         i, n = (int(x) for x in args.shard.split("/"))
@@ -495,6 +576,7 @@ def main() -> int:
     ap.add_argument("--shard", help="i/n: run every n-th case starting at i (for parallel CI jobs)")
     ap.add_argument("--concurrency", type=int, default=1)
     ap.add_argument("--judge-model", help="Ollama model for the judge (default: same provider chain as generation)")
+    ap.add_argument("--judge-num-ctx", type=int, help="context window for the judge model (Ollama)")
     ap.add_argument("--dry-run", action="store_true", help="simulator generation, no judge; validates plumbing only")
     ap.add_argument("--out", default=str(ROOT / "reports" / "ablation.json"))
     ap.add_argument("--merge", nargs="+", help="merge shard outputs instead of running")

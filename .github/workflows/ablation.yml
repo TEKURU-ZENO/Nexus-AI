@@ -10,7 +10,7 @@ on:
         default: "qwen2.5:3b"
       judge_model:
         description: "Judge model (Ollama tag; prefer a different family than the generator)"
-        default: "llama3.1:8b"
+        default: "phi4:14b"
       limit:
         description: "Missions in the ablation (stratified across domains)"
         default: "15"
@@ -24,7 +24,7 @@ permissions:
 env:
   PYTHON_VERSION: "3.12"
   OLLAMA_BASE_URL: http://127.0.0.1:11434
-  OLLAMA_MAX_LOADED_MODELS: "2"
+  OLLAMA_MAX_LOADED_MODELS: "1"  # a 14B judge + 3B generator must not be resident together on a 16 GB runner
   OLLAMA_NUM_PARALLEL: "1"
   LLM_PROVIDERS: ollama
   LLM_TIMEOUT_S: "1200"
@@ -67,7 +67,7 @@ jobs:
           OLLAMA_MODEL: ${{ inputs.model }}
         run: |
           python -m evals.ablation --limit "${{ inputs.limit }}" --shard "${{ matrix.shard }}/5" \
-            --judge-model "${{ inputs.judge_model }}" --out "part-${{ matrix.shard }}.json"
+            --judge-model "${{ inputs.judge_model }}" --judge-num-ctx 8192 --out "part-${{ matrix.shard }}.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: "ablation-part-${{ matrix.shard }}", path: "part-${{ matrix.shard }}.json", if-no-files-found: warn }
@@ -95,11 +95,13 @@ jobs:
         with:
           path: ~/.ollama/models
           key: ollama-${{ inputs.model }}-${{ inputs.judge_model }}
-      - run: ollama pull "${{ inputs.model }}"
+      - run: |
+          ollama pull "${{ inputs.model }}"
+          ollama pull "${{ inputs.judge_model }}"
       - name: Run live eval
         env:
           OLLAMA_MODEL: ${{ inputs.model }}
-        run: python -m evals.run_evals --live --limit "${{ inputs.live_eval_limit }}" --concurrency 1 --results-dir results-out
+        run: python -m evals.run_evals --live --limit "${{ inputs.live_eval_limit }}" --concurrency 1 --judge-model "${{ inputs.judge_model }}" --results-dir results-out
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: live-eval, path: results-out/, if-no-files-found: warn }
@@ -131,6 +133,7 @@ jobs:
         with: { name: eval-results, path: "evals/results/" }
       # Requires Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
       - uses: peter-evans/create-pull-request@v7
+        continue-on-error: true  # results are also in the eval-results artifact and the pushed branch
         with:
           branch: eval-results/${{ github.run_id }}
           commit-message: "eval: ablation and live-eval results (${{ inputs.model }}, judge ${{ inputs.judge_model }})"
