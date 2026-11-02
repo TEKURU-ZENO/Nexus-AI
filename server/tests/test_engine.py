@@ -174,3 +174,56 @@ def test_orphaned_run_is_cancelled_after_subscribers_leave(tmp_path: Path) -> No
         while time.time() < deadline and c.get(f"/api/v1/runs/{run['id']}").json()["status"] == "running":
             time.sleep(0.1)
         assert c.get(f"/api/v1/runs/{run['id']}").json()["status"] == "cancelled"
+
+
+def test_on_stream_execution_mode_for_serverless(tmp_path: Path) -> None:
+    with make_client(make_settings(tmp_path, run_execution="on_stream")) as c:
+        run = c.post("/api/v1/runs", json={"mission": MISSION}).json()
+        assert c.get(f"/api/v1/runs/{run['id']}").json()["status"] == "queued"  # nothing runs until streamed
+        events = read_sse(c, run["id"])
+        assert events[-1]["data"]["status"] == "succeeded"
+        assert read_sse(c, run["id"]) == events  # a second stream replays; it does not re-execute
+
+        queued = c.post("/api/v1/runs", json={"mission": MISSION}).json()
+        assert c.post(f"/api/v1/runs/{queued['id']}/cancel").status_code == 200
+        assert c.get(f"/api/v1/runs/{queued['id']}").json()["status"] == "cancelled"
+
+
+def test_run_timeout_fails_the_run(tmp_path: Path) -> None:
+    with make_client(make_settings(tmp_path, run_timeout_s=0.3), [FakeProvider(delay=0.5)]) as c:
+        run = c.post("/api/v1/runs", json={"mission": MISSION}).json()
+        events = read_sse(c, run["id"])
+        assert events[-1]["data"]["status"] == "failed"
+        assert "time limit" in c.get(f"/api/v1/runs/{run['id']}").json()["error"]
+
+
+def test_stale_runs_are_swept_but_fresh_ones_are_not(tmp_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from server.db.models import Run
+
+    settings = make_settings(tmp_path)
+    app_client = make_client(settings)
+    with app_client as c:
+        c.get("/api/v1/runs")  # provisions the dev org
+        container = c.app.state.container  # type: ignore[attr-defined]
+
+        async def seed_and_sweep() -> tuple[str, str, int]:
+            async with container.db.sessionmaker() as s:
+                old = Run(
+                    org_id="local",
+                    mission=MISSION,
+                    mode="Strategic Planning",
+                    status="running",
+                    created_at=datetime.now(UTC) - timedelta(hours=2),
+                )
+                fresh = Run(org_id="local", mission=MISSION, mode="Strategic Planning", status="running")
+                s.add_all([old, fresh])
+                await s.commit()
+                ids = (old.id, fresh.id)
+            return ids[0], ids[1], await container.runs.sweep_stale()
+
+        old_id, fresh_id, swept = c.portal.call(seed_and_sweep)  # type: ignore[union-attr]
+        assert swept == 1
+        assert c.get(f"/api/v1/runs/{old_id}").json()["status"] == "failed"
+        assert c.get(f"/api/v1/runs/{fresh_id}").json()["status"] == "running"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -47,7 +49,8 @@ def create_app(settings: Settings | None = None, providers: list[Provider] | Non
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if settings.auto_create_schema:
             await container.db.create_all()
-        recovered = await container.runs.recover_interrupted()
+        recovered = await container.runs.sweep_stale()
+        sweeper = asyncio.create_task(container.runs.sweeper(), name="stale-run-sweeper")
         log.info(
             "nexus.started",
             env=settings.environment.value,
@@ -56,6 +59,9 @@ def create_app(settings: Settings | None = None, providers: list[Provider] | Non
             recovered_runs=recovered,
         )
         yield
+        sweeper.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweeper  # must finish before the engine is disposed, or its cleanup can deadlock
         await container.runs.shutdown()
         await container.db.dispose()
 

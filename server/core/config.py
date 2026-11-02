@@ -6,7 +6,7 @@ import os
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     mission_max_chars: int = 4000
     debate_max_rounds: int = 2
     run_orphan_timeout_s: float = 30.0
+    run_timeout_s: float = 600.0  # hard wall-clock limit per run
+    # background: POST /runs starts execution in this process (containers/VMs).
+    # on_stream:  the SSE request that streams a queued run also executes it (serverless, e.g. Vercel,
+    #             where work after the response is frozen). Claimed atomically so it runs exactly once.
+    run_execution: Literal["background", "on_stream"] = Field(
+        default_factory=lambda: "on_stream" if os.getenv("VERCEL") else "background"
+    )
 
     # --- Tools ---
     tavily_api_key: SecretStr | None = None

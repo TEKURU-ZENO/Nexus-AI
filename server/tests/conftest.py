@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -12,10 +14,24 @@ from server.core.config import AuthMode, Settings
 from server.llm.gateway import Provider
 from server.main import create_app
 
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")  # e.g. postgresql+asyncpg://... in CI
+
+
+async def _reset_schema(url: str) -> None:
+    from server.db.models import Base
+    from server.db.session import Database
+
+    db = Database(url)
+    async with db.engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await db.dispose()
+
 
 def make_settings(tmp_path: Path, **overrides: Any) -> Settings:
+    if TEST_DATABASE_URL:
+        asyncio.run(_reset_schema(TEST_DATABASE_URL))
     base: dict[str, Any] = {
-        "database_url": f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
+        "database_url": TEST_DATABASE_URL or f"sqlite+aiosqlite:///{tmp_path / 'test.db'}",
         "environment": "test",
         "auth_mode": AuthMode.DEV,
         "llm_providers": [],

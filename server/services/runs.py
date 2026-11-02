@@ -15,7 +15,7 @@ import asyncio
 import time
 from collections import defaultdict
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -129,7 +129,8 @@ class RunService:
             {"mode": run.mode, "project": run.project, "parent": run.parent_run_id},
         )
         await session.commit()
-        self.start(run.id)
+        if self.settings.run_execution == "background":
+            self.start(run.id)
         return run
 
     def start(self, run_id: str) -> None:
@@ -202,19 +203,22 @@ class RunService:
             stream: AsyncIterator[Any] = MISSION_GRAPH.astream(
                 state, config={"configurable": {"deps": deps}, "recursion_limit": 40}, stream_mode=["custom", "values"]
             )
-            async for mode_, chunk in stream:
-                if mode_ == "custom":
-                    await self._append(
-                        run_id, chunk["type"], chunk.get("agent"), chunk.get("message", ""), chunk.get("data")
-                    )
-                else:
-                    final = chunk
+            async with asyncio.timeout(self.settings.run_timeout_s):
+                async for mode_, chunk in stream:
+                    if mode_ == "custom":
+                        await self._append(
+                            run_id, chunk["type"], chunk.get("agent"), chunk.get("message", ""), chunk.get("data")
+                        )
+                    else:
+                        final = chunk
             if final.get("blocked"):
                 terminal, error = RunStatus.FAILED, "mission blocked by safety policy"
         except asyncio.CancelledError:
             terminal, error = RunStatus.CANCELLED, "cancelled"
         except BudgetExceeded as exc:
             terminal, error = RunStatus.FAILED, str(exc)
+        except TimeoutError:
+            terminal, error = RunStatus.FAILED, f"run exceeded {self.settings.run_timeout_s:.0f}s time limit"
         except Exception as exc:
             log.exception("run.failed", run_id=run_id)
             terminal, error = RunStatus.FAILED, f"internal error ({type(exc).__name__})"
@@ -278,8 +282,21 @@ class RunService:
 
     # ------------------------------------------------------------------ stream
 
+    async def _claim(self, run_id: str) -> bool:
+        """Atomically move a queued run to running; True only for the single winner."""
+        async with self.db.sessionmaker() as s:
+            result = await s.execute(
+                update(Run)
+                .where(Run.id == run_id, Run.status == RunStatus.QUEUED.value)
+                .values(status=RunStatus.RUNNING.value, started_at=datetime.now(UTC))
+            )
+            await s.commit()
+            return bool(getattr(result, "rowcount", 0))
+
     async def stream(self, run_id: str, after_seq: int) -> AsyncIterator[RunEvent]:
         q = self.bus.subscribe(run_id)
+        if self.settings.run_execution == "on_stream" and run_id not in self._tasks and await self._claim(run_id):
+            self.start(run_id)
         self._cancel_orphan_timer(run_id)
         last = after_seq
         try:
@@ -342,20 +359,42 @@ class RunService:
         if task and not task.done():
             task.cancel()
             return True
-        return False
-
-    async def recover_interrupted(self) -> int:
-        """Mark runs orphaned by a process restart as failed."""
+        # Not executing here: a queued run that nobody has claimed can be cancelled directly.
         async with self.db.sessionmaker() as s:
             result = await s.execute(
                 update(Run)
-                .where(Run.status.in_([RunStatus.QUEUED.value, RunStatus.RUNNING.value]))
+                .where(Run.id == run_id, Run.status == RunStatus.QUEUED.value)
+                .values(status=RunStatus.CANCELLED.value, error="cancelled", finished_at=datetime.now(UTC))
+            )
+            await s.commit()
+            return bool(getattr(result, "rowcount", 0))
+
+    async def sweep_stale(self) -> int:
+        """Fail runs abandoned by a crashed or recycled worker.
+
+        Time-based (not "everything at boot") so that it is safe with many instances: a run older than the
+        hard timeout plus grace cannot still be executing anywhere.
+        """
+        cutoff = datetime.now(UTC) - timedelta(seconds=self.settings.run_timeout_s + 120)
+        async with self.db.sessionmaker() as s:
+            result = await s.execute(
+                update(Run)
+                .where(Run.status.in_([RunStatus.QUEUED.value, RunStatus.RUNNING.value]), Run.created_at < cutoff)
                 .values(
-                    status=RunStatus.FAILED.value, error="interrupted by server restart", finished_at=datetime.now(UTC)
+                    status=RunStatus.FAILED.value, error="abandoned (worker stopped)", finished_at=datetime.now(UTC)
                 )
             )
             await s.commit()
             return int(getattr(result, "rowcount", 0) or 0)
+
+    async def sweeper(self, interval_s: float = 60.0) -> None:
+        while True:  # startup already swept once, so wait first
+            await asyncio.sleep(interval_s)
+            try:
+                if swept := await self.sweep_stale():
+                    log.warning("run.swept_stale", count=swept)
+            except Exception:  # the sweeper must never die
+                log.exception("run.sweeper_failed")
 
     async def shutdown(self) -> None:
         for task in list(self._tasks.values()):

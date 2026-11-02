@@ -7,6 +7,8 @@ requires-python = ">=3.12"
 testpaths = ["server/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+timeout = 60
+timeout_method = "thread"  # dumps every thread stack if a test hangs
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.ruff]
@@ -35,5 +37,5 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 source = ["server"]
-concurrency = ["greenlet", "thread"]
+concurrency = ["thread"]
 omit = ["server/tests/*", "server/migrations/*"]

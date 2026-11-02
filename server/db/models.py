@@ -6,7 +6,20 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    TypeDecorator,
+    UniqueConstraint,
+)
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -18,6 +31,23 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+class UTCDateTime(TypeDecorator[datetime]):
+    """Timezone-aware UTC on every backend (SQLite drops tzinfo; this restores it)."""
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("naive datetime; use datetime.now(UTC)")
+        return value.astimezone(UTC) if value is not None else None
+
+    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        if value is None:
+            return None
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 class Base(DeclarativeBase):
     type_annotation_map: ClassVar[dict[Any, Any]] = {dict[str, Any]: JSON, list[Any]: JSON}
 
@@ -27,7 +57,7 @@ class Organization(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     daily_spend_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
 class User(Base):
@@ -35,7 +65,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     subject: Mapped[str] = mapped_column(String(255), unique=True)
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
 class Membership(Base):
@@ -65,9 +95,9 @@ class Run(Base):
     providers: Mapped[list[Any]] = mapped_column(JSON, default=list)
     prompt_versions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
     __table_args__ = (Index("ix_runs_org_created", "org_id", "created_at"),)
 
@@ -81,7 +111,7 @@ class RunEventRow(Base):
     agent: Mapped[str | None] = mapped_column(String(32), nullable=True)
     message: Mapped[str] = mapped_column(Text, default="")
     data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     __table_args__ = (UniqueConstraint("run_id", "seq", name="uq_run_event_seq"),)
 
@@ -94,7 +124,7 @@ class MemoryRow(Base):
     content: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[Any]] = mapped_column(JSON, default=list)
     source_run_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
     __table_args__ = (Index("ix_memories_scope", "org_id", "project"),)
 
@@ -109,4 +139,4 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(64))
     target: Mapped[str | None] = mapped_column(String(64), nullable=True)
     detail: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, index=True)
