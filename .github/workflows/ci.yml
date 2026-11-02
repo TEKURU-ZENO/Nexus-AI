@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
       - run: pip install -r server/requirements-dev.txt
       - run: ruff check server evals scripts
@@ -45,7 +45,7 @@ jobs:
       TEST_DATABASE_URL: postgresql+asyncpg://nexus:nexus@localhost:5432/nexus
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
       - run: pip install -r server/requirements-dev.txt
       - name: Migrations apply, roll back and match the models
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
       - run: pip install -r server/requirements.txt
       - run: python -m evals.run_evals
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
       - uses: actions/setup-node@v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm }
@@ -105,7 +105,7 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip, cache-dependency-path: server/requirements*.txt }
       - uses: actions/setup-node@v4
         with: { node-version: "${{ env.NODE_VERSION }}", cache: npm }
