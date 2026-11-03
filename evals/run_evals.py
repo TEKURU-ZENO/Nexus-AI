@@ -85,10 +85,36 @@ async def _run_one(gateway: LLMGateway, case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+PARTIAL: Path | None = None  # append-only per-case log, so a killed run keeps finished cases
+
+
+def _record_partial(o: dict[str, Any]) -> None:
+    if PARTIAL is None:
+        return
+    row = {
+        "id": o["case"]["id"],
+        "error": o.get("error"),
+        "judge": o.get("judge"),
+        "judge_error": o.get("judge_error"),
+        "blocked": o.get("blocked"),
+        "seconds": round(o.get("seconds", 0.0), 2),
+        "tokens": o.get("tokens"),
+        "result": o["result"].model_dump(mode="json"),
+    }
+    PARTIAL.parent.mkdir(parents=True, exist_ok=True)
+    with PARTIAL.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+
+
 async def _gather(gateway: LLMGateway, cases: list[dict[str, Any]], concurrency: int) -> list[dict[str, Any]]:
     sem = asyncio.Semaphore(concurrency)
 
     async def guarded(c: dict[str, Any]) -> dict[str, Any]:
+        out = await _guarded(c)
+        _record_partial(out)
+        return out
+
+    async def _guarded(c: dict[str, Any]) -> dict[str, Any]:
         async with sem:
             try:
                 return await _run_one(gateway, c)
@@ -146,6 +172,9 @@ def main() -> int:
         JUDGE = LLMGateway(build_providers(js), allow_simulator=False)
     mode = "live" if args.live else "simulator"
     golden = _load("golden_missions.jsonl")[: args.limit or None]
+    global PARTIAL
+    if args.results_dir and args.live:
+        PARTIAL = Path(args.results_dir) / "live-eval.partial.jsonl"
     outcomes = asyncio.run(_gather(gateway, golden, args.concurrency))
     rt_outcomes = asyncio.run(_gather(gateway, _load("redteam.jsonl"), args.concurrency))
 

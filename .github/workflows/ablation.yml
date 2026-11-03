@@ -63,6 +63,7 @@ jobs:
           ollama pull "${{ inputs.model }}"
           ollama pull "${{ inputs.judge_model }}"
       - name: Run shard
+        timeout-minutes: 320
         env:
           OLLAMA_MODEL: ${{ inputs.model }}
         run: |
@@ -99,6 +100,7 @@ jobs:
           ollama pull "${{ inputs.model }}"
           ollama pull "${{ inputs.judge_model }}"
       - name: Run live eval
+        timeout-minutes: 320  # shorter than the job limit so the artifact upload below still runs
         env:
           OLLAMA_MODEL: ${{ inputs.model }}
         run: python -m evals.run_evals --live --limit "${{ inputs.live_eval_limit }}" --concurrency 1 --judge-model "${{ inputs.judge_model }}" --results-dir results-out
@@ -127,7 +129,7 @@ jobs:
           parts=$(find artifacts -name 'part-*.json' | sort)
           test -n "$parts" || { echo "no ablation shards produced output"; exit 1; }
           python -m evals.ablation --merge $parts --out ablation-merged.json --results-dir evals/results | tee summary.md
-          find artifacts/live-eval -name '*.json' -exec cp {} evals/results/ \; 2>/dev/null || true
+          find artifacts/live-eval \( -name '*.json' -o -name '*.jsonl' \) -exec cp {} evals/results/ \; 2>/dev/null || true
           cat evals/results/ablation-latest.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with: { name: eval-results, path: "evals/results/" }

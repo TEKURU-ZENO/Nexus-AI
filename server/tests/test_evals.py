@@ -73,3 +73,17 @@ def test_run_evals_survives_a_failing_case(monkeypatch, capsys) -> None:  # type
     outcomes = asyncio.run(run_evals._gather(LLMGateway([]), run_evals._load("golden_missions.jsonl")[:3], 2))
     assert [bool(o["error"]) for o in outcomes] == [False, True, False]
     assert "g002 errored" in capsys.readouterr().out
+
+
+def test_partial_results_are_written_per_case(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import asyncio
+    import json
+
+    from evals import run_evals
+    from server.llm.gateway import LLMGateway
+
+    monkeypatch.setattr(run_evals, "PARTIAL", tmp_path / "p.jsonl")
+    asyncio.run(run_evals._gather(LLMGateway([]), run_evals._load("golden_missions.jsonl")[:2], 1))
+    rows = [json.loads(line) for line in (tmp_path / "p.jsonl").read_text().splitlines()]
+    assert [r["id"] for r in rows] == ["g001", "g002"]
+    assert rows[0]["result"]["directive"]
