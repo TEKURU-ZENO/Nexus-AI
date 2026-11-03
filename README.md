@@ -45,12 +45,27 @@ Results are produced by the [`Ablation (Ollama)`](.github/workflows/ablation.yml
 and committed to [`evals/results/`](evals/results/). The judge audits itself (position bias, score spread, and a
 known-answer probe against an off-topic plan); if it fails, the result is reported as inconclusive.
 
-**Current status: unproven.** Run 1 (generator `qwen2.5:3b`, judge `llama3.1:8b`, 15 missions, CPU)
-generated all 45 directives without error, but the judge failed its self-audit: it chose whichever plan was
-shown first in 88% of decisive verdicts and gave every directive the same score. Its verdicts were therefore
-discarded as inconclusive ([summary](evals/results/ablation-latest.md)). What run 1 does establish is the cost
-of debate: about 11 LLM calls, 24× the tokens and 13× the wall time of a single prompt per mission. A run with
-a stronger judge from a different model family is next.
+**Current status: not supported at small-model scale; untested on frontier models.**
+
+| Run | Generator → judge | Judge self-audit | Pre-registered verdict |
+|---|---|---|---|
+| 1 | `qwen2.5:3b` → `llama3.1:8b` | failed (88% position bias, all scores identical) | inconclusive |
+| 2 | `qwen2.5:3b` → `phi4:14b` | known-answer probe passed (93%); position bias (82%) and score spread failed | inconclusive |
+
+Pairwise verdicts are unusable in both runs because of position bias. Run 2's judge did pass the known-answer probe,
+and its per-directive absolute scores (which position bias cannot affect) point **against** the premise at this scale:
+
+- The debate graph scored lower than a single prompt: 6.47 vs 7.00 overall, paired difference −0.53 (bootstrap 95% CI
+  −0.80 to −0.27). Per mission it was never better: 0 better, 8 worse, 7 equal (sign test p ≈ 0.008).
+- It also scored lower than the compute-matched self-refine control: −0.40 (CI −0.67 to −0.13).
+- By dimension, the graph improved only risk coverage (7.27 vs 7.07); feasibility (6.20 vs 6.87), decision quality and
+  specificity were lower. Its directives were 2.4× longer.
+- Cost per mission: about 11 LLM calls, 26× the tokens and 16× the wall time of a single prompt.
+
+So with a 3B generator, critic-and-rebuttal debate does **not** beat one good prompt. A plausible explanation is that a
+small model degrades over the long accumulated debate context. Whether debate helps strong models is still untested:
+run the same workflow with a frontier generator and judge (API keys as repo secrets) before making any quality claim.
+Full data: [`evals/results/`](evals/results/).
 
 ## Quick start
 
