@@ -20,7 +20,7 @@
     "gen:api": "python -m scripts.export_openapi > openapi.json && openapi-typescript openapi.json -o src/api/schema.ts && prettier --write src/api/schema.ts"
   },
   "dependencies": {
-    "framer-motion": "14.9.0",
+    "framer-motion": "14.10.1",
     "lucide-react": "1.66.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
