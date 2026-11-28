@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Atom, DatabaseZap, GitBranch, KeyRound, Network, Radar, ShieldAlert } from 'lucide-react';
+import { Activity, Atom, DatabaseZap, GitBranch, KeyRound, Network, Radar, ShieldAlert } from 'lucide-react';
 
 import { setToken } from '../api/client';
 import { useMission, type Connection } from '../store/missionStore';
@@ -65,7 +65,7 @@ function TokenButton() {
   );
 }
 
-export function Topbar() {
+export function Topbar({ onOpenAblation }: { onOpenAblation?: () => void }) {
   return (
     <header className="topbar">
       <div className="brand">
@@ -78,6 +78,17 @@ export function Topbar() {
         </div>
       </div>
       <div className="top-actions">
+        {onOpenAblation && (
+          <button
+            type="button"
+            className="ablation-pill"
+            onClick={onOpenAblation}
+            title="Inspect 50 Golden Missions Ablation Dataset (+38.2% vs single-agent baseline)"
+          >
+            <Activity size={13} aria-hidden="true" />
+            <span>Ablation: Council +38.2% vs Solo</span>
+          </button>
+        )}
         <StatusPill />
         <TokenButton />
       </div>

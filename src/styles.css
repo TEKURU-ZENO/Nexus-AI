@@ -1226,6 +1226,53 @@ button {
   margin: 0 0 8px 0;
 }
 
+/* Front & Center Ablation Headline Banner */
+.ablation-hero-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(47, 128, 237, 0.05);
+  border: 1px solid rgba(47, 128, 237, 0.28);
+  border-left: 3px solid var(--accent);
+  padding: 10px 14px;
+  border-radius: 4px;
+  width: 100%;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.ablation-hero-banner:hover {
+  background: rgba(47, 128, 237, 0.1);
+  border-color: rgba(47, 128, 237, 0.5);
+}
+
+.ablation-stat-big {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  font-family: monospace;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.ablation-stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ablation-stat-text strong {
+  font-size: 12px;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+.ablation-stat-text span {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
 .landing-left .status-indicator {
   font-size: 10px;
   font-family: monospace;
@@ -1352,31 +1399,226 @@ button {
   50% { opacity: 0.3; }
 }
 
-.tactical-specs {
+.tactical-specs,
+.ablation-scoreboard {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.spec-item {
+.spec-item,
+.ablation-spec-item {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.01);
-  padding: 8px;
+  background: rgba(255,255,255,0.015);
+  padding: 8px 10px;
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  transition: all 0.15s ease;
+  cursor: pointer;
 }
 
-.spec-item span {
+.ablation-spec-item:hover {
+  border-color: rgba(47, 128, 237, 0.4);
+  background: rgba(47, 128, 237, 0.04);
+}
+
+.spec-item span,
+.ablation-spec-item span {
   font-size: 8px;
   color: var(--text-muted);
   font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.spec-item b {
+.spec-item b,
+.ablation-spec-item b {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: monospace;
+  color: #ffffff;
+}
+
+.ablation-spec-item small {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Topbar Ablation Pill */
+.ablation-pill {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(47, 128, 237, 0.35);
+  background: rgba(47, 128, 237, 0.08);
   font-size: 11px;
-  font-weight: 600;
+  font-family: monospace;
+  border-radius: 4px;
+  color: #3291ff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ablation-pill:hover {
+  background: rgba(47, 128, 237, 0.2);
+  border-color: #3291ff;
+  color: #ffffff;
+}
+
+/* Modal styles for Ablation Study & Scoreboard */
+.modal-content.ablation-modal {
+  max-width: 860px;
+}
+
+.ablation-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ablation-stat-box {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.ablation-stat-box .num {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--accent);
+}
+
+.ablation-stat-box .lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+  font-family: monospace;
+}
+
+.ablation-mission-selector {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ablation-mission-selector button {
+  font-size: 10px;
+  font-family: monospace;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.ablation-mission-selector button.active {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ablation-side-by-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ablation-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ablation-card.single {
+  background: rgba(235, 87, 87, 0.03);
+  border-color: rgba(235, 87, 87, 0.25);
+}
+
+.ablation-card.council {
+  background: rgba(47, 128, 237, 0.04);
+  border-color: rgba(47, 128, 237, 0.35);
+}
+
+.ablation-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  text-transform: uppercase;
+}
+
+.ablation-card.single .ablation-card-title { color: var(--danger); }
+.ablation-card.council .ablation-card-title { color: var(--accent); }
+
+.ablation-flaw-item {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #cccccc;
+  padding: 3px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ablation-delta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: monospace;
+  font-weight: 700;
+  background: rgba(47, 128, 237, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(47, 128, 237, 0.3);
+}
+
+.ablation-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.ablation-table th, .ablation-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.ablation-table th {
+  text-transform: uppercase;
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ablation-table td.delta {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 /* Global Scrolling & Body Fallbacks */

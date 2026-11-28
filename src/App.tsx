@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 
-import { CompareModal, TraceModal } from './components/Dialogs';
+import { AblationModal, CompareModal, TraceModal } from './components/Dialogs';
 import { MissionConsole, ReasoningFeed, StageBar } from './components/Console';
 import { Sidebar, Toasts, Topbar } from './components/Chrome';
 import { DirectiveView } from './components/Directive';
@@ -18,6 +18,7 @@ export default function App() {
   const [view, setView] = useState<'landing' | 'console'>(() => (location.hash === '#console' ? 'console' : 'landing'));
   const [traceAgent, setTraceAgent] = useState<AgentId | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [ablationOpen, setAblationOpen] = useState(false);
 
   useEffect(() => {
     void bootstrap();
@@ -46,11 +47,14 @@ export default function App() {
         </Suspense>
       )}
       {view === 'landing' ? (
-        <LandingPage onEnter={enter} />
+        <>
+          <LandingPage onEnter={enter} onOpenAblation={() => setAblationOpen(true)} />
+          {ablationOpen && <AblationModal onClose={() => setAblationOpen(false)} />}
+        </>
       ) : (
         <div className="app-shell">
           <div className="grid-bg" aria-hidden="true" />
-          <Topbar />
+          <Topbar onOpenAblation={() => setAblationOpen(true)} />
           <Sidebar />
           <main className="workspace" id="main">
             <div className="left-column">
@@ -67,6 +71,7 @@ export default function App() {
           </main>
           {traceAgent && <TraceModal agent={traceAgent} onClose={() => setTraceAgent(null)} />}
           {compareOpen && <CompareModal onClose={() => setCompareOpen(false)} />}
+          {ablationOpen && <AblationModal onClose={() => setAblationOpen(false)} />}
           <Toasts />
         </div>
       )}
